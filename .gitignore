@@ -1,0 +1,15 @@
+.env
+/node_modules/
+
+# Logs
+/logs/
+yarn-error.log
+
+# Temp
+/results/
+/temp/
+backlog.md
+
+# IDE and Computer files
+.idea/
+DS_Store
