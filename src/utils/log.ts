@@ -1,5 +1,12 @@
 import chalk from 'chalk';
 import { rlQuestionPrefixed } from './rlQuestion.ts';
+import util from 'util';
+import debug from 'debug';
+
+util.inspect.defaultOptions.depth = null;
+util.inspect.defaultOptions.colors = true;
+
+export const logStep = debug('taw:workflow:step');
 
 export function critical(message: string, ...args: any[]) {
   console.error(chalk.bgRed(' 🔥 CRITICAL '), chalk.red(message), ...args);

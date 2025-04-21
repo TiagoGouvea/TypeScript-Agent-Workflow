@@ -33,7 +33,7 @@ This will display a list of available agencies and workflows that you can choose
 
 Or you can run a specific workflow:
 ```bash
-yarn start --workflow=createCharacter
+yarn start --workflow=agentTest
 ```
 
 ### Creating a Workflow
@@ -46,7 +46,7 @@ import { createAgentStep, InputSource } from "../../types/workflow/Step.ts";
 import { Workflow } from "../../types/workflow/Workflow.ts";
 
 // Step 1: Create a character
-const createCharacter = createAgentStep({
+const agentTest = createAgentStep({
   name: 'Create a character',
   introductionText: 'I will create a character',
   inputSchema: z.object({
@@ -73,7 +73,7 @@ const createCharacter = createAgentStep({
 const writeStory = createAgentStep({
   name: 'Write a story',
   introductionText: 'I will write a story',
-  inputSchema: createCharacter.outputSchema,
+  inputSchema: agentTest.outputSchema,
   inputSource: InputSource.LastStep,
   outputSchema: z
     .string()
@@ -82,7 +82,7 @@ const writeStory = createAgentStep({
 });
 
 // Create the workflow with the defined steps
-export const myWorkflow = new Workflow({ createCharacter, writeStory });
+export const myWorkflow = new Workflow({ agentTest, writeStory });
 ```
 
 ### Project Structure
@@ -96,7 +96,7 @@ export const myWorkflow = new Workflow({ createCharacter, writeStory });
 
 ## Exemples
 
-- `/src/_workflows/createCharacter/` Two step workflow with user input on the firs step, with LLM interaction on both steps.
+- `/src/_workflows/agentTest/` Two step workflow with user input on the firs step, with LLM interaction on both steps.
 
 ## Architecture
 
