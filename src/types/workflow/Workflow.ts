@@ -24,6 +24,7 @@ import {
 } from './StructuredData.ts';
 import { getStepInput, InputSource } from './Input.ts';
 import { executeAgentStep } from './StepAgent.ts';
+import { executeCodeStep } from './StepCode.ts';
 
 /**
  * Motor de orquestração de steps.
@@ -67,7 +68,7 @@ export class Workflow {
 
       // Verificar o tipo de step e executar a lógica apropriada
       if (isCodeStep(step)) {
-        stepResult = await step.run({ step, stepInput });
+        stepResult = await executeCodeStep({ step, stepInput });
       } else if (isAgentStep(step)) {
         stepResult = await executeAgentStep({ step, stepInput });
       } else {

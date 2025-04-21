@@ -123,7 +123,7 @@ export const executeAgentStep = async ({
           responseFormat: z.object({ agentResponse: responseSchema }),
         });
         // Validate result with schema
-        // console.log('llmResult', llmResult);
+        console.log('llmResult', llmResult);
         // console.log('messages.length:', messages.length);
 
         messages.push({
@@ -145,6 +145,7 @@ export const executeAgentStep = async ({
         // console.log('shouldContinueInThisStep?', shouldContinueInThisStep);
       } catch (err: any) {
         error('Error calling the model:', err.message || err);
+        console.error(err);
         process.exit(1);
       }
     }

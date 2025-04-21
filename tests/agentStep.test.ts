@@ -6,8 +6,10 @@ import { createAgentStep } from '../src/types/workflow/Step';
 
 vi.mock('../src/llm/callModel.ts', () => ({
   callModel: vi.fn().mockImplementation(async () => ({
-    result: 4,
-    gotToNextStep: true,
+    agentResponse: {
+      result: 4,
+      gotToNextStep: true,
+    },
   })),
 }));
 
