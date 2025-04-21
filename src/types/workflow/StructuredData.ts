@@ -33,16 +33,15 @@ export function mergeTwoStructuredData(
   const keys = Array.from(
     new Set([...Object.keys(inputDataOne), ...Object.keys(inputDataTwo)]),
   );
-  console.log('inputDataOne', inputDataOne);
-  console.log('inputDataTwo', inputDataTwo);
-  console.log('allKeys', keys);
+  // console.log('inputDataOne', inputDataOne);
+  // console.log('inputDataTwo', inputDataTwo);
+  // console.log('allKeys', keys);
   const stepInputData: StructuredData<any> = {};
   keys.forEach((key) => {
-    logStep('Merging key', key);
     stepInputData[key] = { ...inputDataOne[key], ...inputDataTwo[key] };
   });
 
-  console.log('mergeTwoStepInputData result', stepInputData);
+  // console.log('mergeTwoStepInputData result', stepInputData);
   logStep('mergeTwoStepInputData result', stepInputData);
   return stepInputData;
 }

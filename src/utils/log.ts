@@ -17,11 +17,15 @@ export function error(message: string, ...args: any[]) {
 }
 
 export function warn(message: string, ...args: any[]) {
-  console.warn(chalk.bgYellow(' WARN '), chalk.yellow(message), ...args);
+  console.log(chalk.bgYellow(' WARN '), chalk.yellow(message), ...args);
 }
 
 export function systemInfo(message: string, ...args: any[]) {
-  console.warn(chalk.bgMagenta(' SYSTEM '), chalk.magenta(message), ...args);
+  console.log(chalk.bgMagenta(' SYSTEM '), chalk.magenta(message), ...args);
+}
+
+export function llmInfo(message: string, ...args: any[]) {
+  console.log(chalk.bgWhite(' LLM '), chalk.white(message), ...args);
 }
 
 export function systemAsks(prompt: string) {

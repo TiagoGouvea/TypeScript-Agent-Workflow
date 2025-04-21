@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 // Ajuste o caminho se necessário
 import { z } from 'zod';
 import {
-  rawDataObjectToStr,
   inputSchemaToStructuredData,
   mergeTwoStructuredData,
   type RawData,
+  rawDataObjectToStructuredData,
 } from '../src/types/workflow/StructuredData';
 
 describe('StructuredDataHandling', () => {
@@ -72,7 +72,7 @@ describe('StructuredDataHandling', () => {
         name: { value: 'James' },
         age: { value: 33 },
       };
-      expect(rawDataObjectToStr(inputDataObject)).toEqual(expected);
+      expect(rawDataObjectToStructuredData(inputDataObject)).toEqual(expected);
     });
 
     it('should handle different data types correctly', () => {
@@ -88,7 +88,7 @@ describe('StructuredDataHandling', () => {
         details: { value: { id: 'a', status: 'ok' } },
         items: { value: ['x', 'y'] },
       };
-      expect(rawDataObjectToStr(inputDataObject)).toEqual(expected);
+      expect(rawDataObjectToStructuredData(inputDataObject)).toEqual(expected);
     });
 
     it('should handle null and undefined values', () => {
@@ -98,13 +98,13 @@ describe('StructuredDataHandling', () => {
         task: { value: undefined },
         id: { value: '123' },
       };
-      expect(rawDataObjectToStr(inputDataObject)).toEqual(expected);
+      expect(rawDataObjectToStructuredData(inputDataObject)).toEqual(expected);
     });
 
     it('should return an empty object if the input data object is empty', () => {
       const inputDataObject = {};
       const expected: RawData = {};
-      expect(rawDataObjectToStr(inputDataObject)).toEqual(expected);
+      expect(rawDataObjectToStructuredData(inputDataObject)).toEqual(expected);
     });
   });
 

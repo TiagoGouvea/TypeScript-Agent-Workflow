@@ -1,14 +1,18 @@
 import { z } from 'zod';
 import { InputSource } from './Input.ts';
 import { agentAsks, agentSays, error, logStep } from '../../utils/log.ts';
-import { zodResponseFormat } from 'openai/helpers/zod';
 import { callModel } from '../../llm/callModel.ts';
 
-export const executeAgentStep = async (step: any, stepInput: any) => {
+export const executeAgentStep = async ({
+  step,
+  stepInput,
+}: {
+  step: any;
+  stepInput: any;
+}) => {
   try {
     // @todo SingleShot?
     // Quando ele já deve receber o input, rodar e retornar o retorno final, sem nenhuma interação
-
     // Deve retornar o output final já, ou o output intermediário?
     // Se não tiver que interagir nem falar nada, já dá pra retonar o final
 
@@ -22,17 +26,15 @@ export const executeAgentStep = async (step: any, stepInput: any) => {
         .string()
         .describe(
           'Uma informação para ser apresentada ao usuário humano. Nunca deve conter perguntas.',
-        )
-        .nullable(),
+        ),
       gotToNextStep: z
         .boolean()
         .describe(
           'Termina e etapa atual e deixa o workflow seguir para a próxima etapa',
-        )
-        .nullable(),
+        ),
     });
 
-    const allowUserInteraction = step.allowUserInteraction !== false;
+    const allowUserInteraction = step.inputSource == InputSource.UserInput;
 
     if (step.inputSource == InputSource.UserInput && allowUserInteraction) {
       systemPrompt = `
@@ -72,8 +74,7 @@ export const executeAgentStep = async (step: any, stepInput: any) => {
           .string()
           .describe(
             'Uma pergunta para o usuário humano, necessária para continuar o processo.',
-          )
-          .optional(),
+          ),
       });
     } else {
       // single shot
@@ -95,7 +96,9 @@ export const executeAgentStep = async (step: any, stepInput: any) => {
     // lastResponseSchema = responseSchema;
 
     let llmResult: any = null;
-    let messages = [{ role: 'user', content: JSON.stringify(stepInput) }];
+    let messages = [
+      { role: 'user', content: 'inputData: ' + JSON.stringify(stepInput) },
+    ];
     while (shouldContinueInThisStep) {
       // Rodar system prompt
       try {
@@ -104,47 +107,99 @@ export const executeAgentStep = async (step: any, stepInput: any) => {
         // Terminar o processo todo?
         // Ir para a próxima etapa?
 
-        logStep(
-          'responseSchema',
-          zodResponseFormat(responseSchema, 'parsed_response'),
-        );
+        // logStep(
+        //   'responseSchema',
+        //   zodResponseFormat(responseSchema, 'parsed_response'),
+        // );
 
-        console.log('will callModel');
-
+        // console.log(
+        //   '>>>>>>>>>>>>>>>>>>> will callModel',
+        //   'messages.length:',
+        //   messages.length,
+        // );
         llmResult = await callModel({
           systemPrompt,
           messages,
-          responseFormat: responseSchema,
+          responseFormat: z.object({ agentResponse: responseSchema }),
         });
-        logStep('llmResult', llmResult);
+        // Validate result with schema
+        // console.log('llmResult', llmResult);
+        // console.log('messages.length:', messages.length);
 
         messages.push({
           role: 'assistant',
           content: JSON.stringify(llmResult),
         });
 
-        if (llmResult.humanResponse) agentSays(llmResult.humanResponse);
+        if (llmResult.agentResponse.humanResponse)
+          agentSays(llmResult.agentResponse.humanResponse);
 
-        if (llmResult.humanQuestion && allowUserInteraction) {
-          const value = await agentAsks(llmResult.humanQuestion);
+        if (llmResult.agentResponse.humanQuestion && allowUserInteraction) {
+          const value = await agentAsks(llmResult.agentResponse.humanQuestion);
           messages.push({ role: 'user', content: value });
         }
 
         shouldContinueInThisStep =
-          !!(llmResult.humanQuestion && allowUserInteraction) ||
-          !llmResult.gotToNextStep;
-        logStep('shouldContinueInThisStep?', shouldContinueInThisStep);
+          !!(llmResult.agentResponse.humanQuestion && allowUserInteraction) ||
+          !llmResult.agentResponse.gotToNextStep;
+        // console.log('shouldContinueInThisStep?', shouldContinueInThisStep);
       } catch (err: any) {
         error('Error calling the model:', err.message || err);
         process.exit(1);
       }
     }
 
-    console.log('llmResult', llmResult);
+    // console.log('llmResult', llmResult);
 
-    return { llmResult, messages, responseSchema };
+    // Reformat result
+    // console.log('>>>>>> executeAgentStep agentResult', {
+    //   llmResult,
+    //   messages,
+    //   responseSchema,
+    // });
+    const agentResult = await formatStepResult(step, {
+      llmResult,
+      messages,
+      responseSchema,
+    });
+
+    return agentResult;
   } catch (err: any) {
     error('Error calling the model:', err.message || err);
     process.exit(1);
   }
 };
+
+async function formatStepResult(
+  step: any,
+  lastResponseSchema: any,
+): Promise<any> {
+  const { llmResult, messages, responseSchema } = lastResponseSchema;
+
+  // @todo quando tenho que rodar outra vez pra formatar o retorno?
+  // if (
+  //   step.outputSchema &&
+  //   JSON.stringify(responseSchema) !== JSON.stringify(step.outputSchema)
+  // ) {
+  // logStep('Should call LLM again to format output');
+  // console.log('system', step.systemPrompt);
+  // console.log('messages', messages);
+  // Tenho que retornar o output no formato definido....
+  // Quando ele mandar terminar, rodar mais uma vez com o outputSchema definido de saída
+  return await callModel({
+    systemPrompt: step.systemPrompt,
+    messages: [
+      ...messages,
+      {
+        role: 'system',
+        content:
+          'Convert the above output to the following schema: ' +
+          JSON.stringify(step.outputSchema),
+      },
+    ],
+    responseFormat: step.outputSchema ? step.outputSchema : z.any(),
+  });
+  // } else {
+  //   return llmResult;
+  // }
+}

@@ -11,19 +11,18 @@ const workflowsDir = './src/_workflows';
 // Function to dynamically import and execute a workflow
 async function executeWorkflow(workflowName: string) {
   try {
-    const workflowModule = await import(
-      `./_workflows/${workflowName}/${workflowName}.ts`
-    );
-    if (workflowModule && workflowModule.testWorkflow) {
-      systemInfo(`🚀 Executing workflow ${ucfirst(workflowName)}`);
-      console.log('');
-      await workflowModule.testWorkflow.execute();
-      console.log('');
-      systemInfo(`✅ Workflow ${ucfirst(workflowName)} completed.`);
-    } else {
-      console.error(`No valid workflow export found in "${workflowName}"`);
-      process.exit(1);
-    }
+    systemInfo(`🚀 Executing workflow ${ucfirst(workflowName)}`);
+
+    await import(`./_workflows/${workflowName}/${workflowName}.ts`);
+    // if (workflowModule && workflowModule.testWorkflow) {
+    //   console.log('');
+    //   await workflowModule.testWorkflow.execute();
+    //   console.log('');
+    systemInfo(`✅ Workflow ${ucfirst(workflowName)} completed.`);
+    // } else {
+    //   console.error(`No valid workflow export found in "${workflowName}"`);
+    //   process.exit(1);
+    // }
   } catch (err) {
     console.error(`Error executing workflow ${workflowName}:`, err);
     process.exit(1);

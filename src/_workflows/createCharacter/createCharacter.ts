@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { createAgentStep, InputSource } from '../../types/workflow/Step.ts';
+import { createAgentStep } from '../../types/workflow/Step.ts';
 import { Workflow } from '../../types/workflow/Workflow.ts';
+import { InputSource } from '../../types/workflow/Input.ts';
 
 // Step 1: Discuss the subject and objectives
 const createCharacter = createAgentStep({
@@ -25,7 +26,7 @@ const createCharacter = createAgentStep({
     goal: z.string(),
     objectives: z.array(z.string()),
   }),
-  systemPrompt: `Create a character`,
+  systemPrompt: `Create a character with the received subject`,
 });
 
 // Step 2: Write the final post
@@ -41,4 +42,6 @@ const writeStory = createAgentStep({
 });
 
 // Assemble the workflow with the defined steps
-export const testWorkflow = new Workflow({ createCharacter, writeStory });
+const testWorkflow = new Workflow({ createCharacter, writeStory });
+await testWorkflow.execute();
+// console.log(testWorkflow.getResult('rawData'));

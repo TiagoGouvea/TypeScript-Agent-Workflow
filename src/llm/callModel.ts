@@ -2,6 +2,7 @@ import { zodResponseFormat } from 'openai/helpers/zod';
 import { jsonrepair } from 'jsonrepair';
 import OpenAI from 'openai';
 import { parseChatCompletion } from 'openai/lib/parser';
+import { llmInfo } from '../utils/log.ts';
 
 export async function callModel({
   systemPrompt,
@@ -12,18 +13,10 @@ export async function callModel({
   messages: any[];
   responseFormat?: any;
 }) {
-  if (systemPrompt) messages.unshift({ role: 'system', content: systemPrompt });
-  return callOpenAI({ messages, responseFormat });
-}
-
-async function callOpenAI({
-  messages,
-  responseFormat,
-}: {
-  messages: any[];
-  responseFormat?: any;
-}) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
+
+  messages = messages ? structuredClone(messages) : [];
+  if (systemPrompt) messages.unshift({ role: 'system', content: systemPrompt });
 
   try {
     const openai = new OpenAI({
@@ -66,11 +59,15 @@ async function callOpenAI({
     // console.log('messages', messages);
 
     while (firstCall || hasToolCalls) {
+      // console.log('-------------------------');
+      // console.dir(options.messages, { depth: null });
+      // console.dir(options.response_format, { depth: null });
       // console.log(
       //   '🛜 Pensando ',
       //   tools?.length ? 'com ferramentas' : 'sem ferramentas',
       //   '...',
       // );
+      llmInfo('Calling OpenAI...');
       // completion = await openai.beta.chat.completions.parse(options);
       completion = await openai.chat.completions.create(options);
       try {

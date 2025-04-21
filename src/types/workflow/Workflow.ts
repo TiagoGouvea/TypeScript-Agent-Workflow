@@ -17,7 +17,6 @@ import {
   workflowInfo,
 } from '../../utils/log.ts';
 import {
-  rawDataObjectToStr,
   type RawData,
   type StructuredData,
   structuredDataToRawData,
@@ -50,7 +49,7 @@ export class Workflow {
 
     for (const stepKey of stepKeys) {
       const step = this.steps[stepKey];
-      workflowInfo('Step ' + stepsCount++, stepKey, step.name);
+      workflowInfo('Step ' + stepsCount++ + ' - ' + step.name);
       let stepResult: any;
       let stepInput: any;
 
@@ -62,7 +61,7 @@ export class Workflow {
 
       /////////////////////////////////////// Input  /////////////////////////////
       stepInput = await getStepInput(this, step, lastStepResult);
-      console.log('> STEPINPUT', stepInput);
+      // console.log('> stepInput', stepInput);
 
       //////////////////////////////// Execute step  /////////////////////////////
 
@@ -70,15 +69,13 @@ export class Workflow {
       if (isCodeStep(step)) {
         stepResult = await step.run({ step, stepInput });
       } else if (isAgentStep(step)) {
-        const agentResult = await executeAgentStep(step, stepInput);
-        console.log('>>>>>> executeAgentStep agentResult', agentResult);
-        stepResult = await this.formatStepResult(step, agentResult);
+        stepResult = await executeAgentStep({ step, stepInput });
       } else {
         throw new Error('Unknown step type: ' + JSON.stringify(step));
       }
       /// if..... ?
       stepResult = rawDataObjectToStructuredData(stepResult);
-      console.log('> STEPRESULT', stepResult);
+      // console.log('> stepResult', stepResult);
       this.lastStepResult = stepResult;
 
       /////// Validate result
@@ -94,47 +91,21 @@ export class Workflow {
 
       // @todo Indicar visualmente quando começa e termina uma etapa
 
-      console.log(' ');
-      workflowInfo('Step finished');
-      workflowInfo('GlobalState', this.globalState);
-      workflowInfo('Next step');
-      console.log(' ');
+      // console.log(' ');
+      // workflowInfo('Step finished');
+      // workflowInfo('GlobalState', this.globalState);
+      // workflowInfo('Next step');
+      // console.log(' ');
 
       // console.log('END');
       // process.exit();
     }
-
-    console.log('\n✅ Workflow finished successfully!');
-
     return this.globalState;
   }
 
   /**
    * Formata o resultado final de um step
    */
-  private async formatStepResult(
-    step: any,
-    lastResponseSchema: any,
-  ): Promise<any> {
-    const { llmResult, messages, responseSchema } = lastResponseSchema;
-
-    // @todo quando tenho que rodar outra vez pra formatar o retorno?
-    // if (
-    //   step.outputSchema &&
-    //   JSON.stringify(responseSchema) !== JSON.stringify(step.outputSchema)
-    // ) {
-    logStep('Should call LLM again to format output');
-    // Tenho que retornar o output no formato definido....
-    // Quando ele mandar terminar, rodar mais uma vez com o outputSchema definido de saída
-    return await callModel({
-      systemPrompt: step.systemPrompt,
-      messages,
-      responseFormat: step.outputSchema ? step.outputSchema : z.any(),
-    });
-    // } else {
-    //   return llmResult;
-    // }
-  }
 
   getResult(workflowResulType: 'structuredData' | 'rawData') {
     return workflowResulType === 'structuredData'

@@ -53,14 +53,14 @@ describe('Input Sources', () => {
       run: async ({ stepInput }): Promise<StructuredData<any>> => {
         if (!stepInput?.calculation.value)
           throw new Error('stepInput is undefined');
-        console.log('secondStep input', stepInput);
+        // console.log('secondStep input', stepInput);
         return { finalNumber: stepInput.calculation.value * 2 } as any;
       },
     });
     const testWorkflow = new Workflow({ firstStep, secondStep });
     await testWorkflow.execute();
     const result = testWorkflow.getResult('rawData');
-    console.log('Workflow result:', result);
+    // console.log('Workflow result:', result);
     expect(result.finalNumber).toBe(12);
   });
 
@@ -73,11 +73,11 @@ describe('Input Sources', () => {
         finalNumber: z.number(),
       }),
       run: async ({ stepInput }): Promise<StructuredData<any>> => {
-        if (!stepInput?.firstNumber?.output?.calculation?.value)
+        if (!stepInput?.firstStep?.output?.calculation?.value)
           throw new Error('stepInput is undefined');
-        console.log('globalInputStep input', stepInput);
+        // console.log('globalInputStep input', stepInput);
         return {
-          finalNumber: stepInput.firstStep.output.calculation.value * 2,
+          finalNumber: stepInput.firstStep.output?.calculation.value * 2,
         } as any;
       },
     });
@@ -87,7 +87,7 @@ describe('Input Sources', () => {
     });
     await testWorkflow.execute();
     const result = testWorkflow.getResult('rawData');
-    console.log('Workflow result:', result);
+    // console.log('Workflow result:', result);
     expect(result.finalNumber).toBe(12);
   });
 
@@ -103,7 +103,7 @@ describe('Input Sources', () => {
       run: async ({ stepInput }): Promise<StructuredData<any>> => {
         if (!stepInput?.firstNumber.value || !stepInput?.secondNumber.value)
           throw new Error('stepInput is undefined');
-        console.log('run stepInput', stepInput);
+        // console.log('run stepInput', stepInput);
         return {
           finalNumber:
             stepInput.firstNumber.value * stepInput.secondNumber.value,
@@ -115,7 +115,7 @@ describe('Input Sources', () => {
     });
     await testWorkflow.execute();
     const result = testWorkflow.getResult('rawData');
-    console.log('Workflow result:', result);
+    // console.log('Workflow result:', result);
     expect(result.finalNumber).toBe(6);
   });
 });

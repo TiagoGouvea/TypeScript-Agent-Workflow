@@ -1,11 +1,10 @@
 import {
-  rawDataObjectToStr,
   inputSchemaToStructuredData,
   mergeTwoStructuredData,
   type StructuredData,
   rawDataObjectToStructuredData,
 } from './StructuredData.ts';
-import { agentAsks, logStep } from '../../utils/log.ts';
+import { agentAsks } from '../../utils/log.ts';
 import type { AgentStep, CodeStep } from './Step.ts';
 import type { Workflow } from './Workflow.ts';
 
@@ -41,10 +40,10 @@ export const getStepInput = (
   const draftStructuredData: StructuredData<any> = inputSchemaToStructuredData(
     step.inputSchema,
   );
-  console.log('draftStructuredData', draftStructuredData);
+  // console.log('draftStructuredData', draftStructuredData);
 
   // mergeInputDataObjectToStepInputData
-  console.log('> step.inputSource', step.inputSource);
+  // console.log('> step.inputSource', step.inputSource);
 
   // Check if inputData is already provided in the step definition
   if (step.inputSource == InputSource.DataObject && step.inputDataObject) {
@@ -67,12 +66,11 @@ async function getUserInput(
   if (process.env.NODE_ENV === 'test') {
     return { firstNumber: { value: 2 }, secondNumber: { value: 3 } };
   }
-
-  console.log('Requesting input from user...');
+  // console.log('Requesting input from user...');
   const result = structuredClone(draftStructuredData);
   for (const key of Object.keys(draftStructuredData)) {
     let question = draftStructuredData[key].description;
-    if (question && ['?', ':'].includes(question[question.length - 1]))
+    if (question && !['?', ':'].includes(question[question.length - 1]))
       question = question + ':';
     result[key].value = await agentAsks(question || '?');
   }
