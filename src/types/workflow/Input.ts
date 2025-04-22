@@ -30,7 +30,6 @@ export const getStepInput = (
   // [ ] Create type for it
   // 1 - Obter todos os atributos do inputSchema, Criar um objeto com os atributos do inputSchema
   if (step.inputSource == InputSource.Global) {
-    console.log('here');
     return workflow.getGlobal('structuredData');
   }
 

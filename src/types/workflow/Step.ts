@@ -1,11 +1,12 @@
 import { ZodType } from 'zod';
 import { type RawData, type StructuredData } from './StructuredData.ts';
 import type { InputSource } from './Input.ts';
+import type { CodeNode } from '../../nodes/Code.ts';
 
 /**
  * Interface base para todos os tipos de Step
  */
-export interface BaseStep<I, O> {
+export interface BaseNodeParams {
   name?: string;
   inputSchema?: ZodType<I>;
   inputSource?: InputSource;
@@ -15,53 +16,36 @@ export interface BaseStep<I, O> {
   introductionText?: string;
 }
 
+export interface NodeRunParams {
+  step: BaseNodeParams;
+  stepInput: StructuredData<any>;
+}
+
+// export function isCodeStep(step: Step): step is CodeNode {
+//   return step.type === 'CodeStep';
+// }
+
 // Agent Step
-export interface AgentStep<I, O> extends BaseStep<I, O> {
+export interface AgentStep extends BaseNodeParams {
   type: 'AgentStep';
   systemPrompt: string;
 }
 
-export function createAgentStep<I, O>(
-  params: Omit<AgentStep<I, O>, 'type'>,
-): AgentStep<I, O> {
+export function createAgentStep(params: Omit<AgentStep, 'type'>): AgentStep {
   return {
     ...params,
     type: 'AgentStep',
   };
 }
 
-export function isAgentStep<I, O>(step: Step<I, O>): step is AgentStep<I, O> {
+export function isAgentStep(step: Step): step is AgentStep {
   return step.type === 'AgentStep';
-}
-
-type CodeStepRunParams = {
-  step: CodeStep<any, any>;
-  stepInput: StructuredData<any>;
-};
-
-// Code step
-export interface CodeStep<I, O> extends BaseStep<I, O> {
-  type: 'CodeStep';
-  run: (params: CodeStepRunParams) => Promise<O>;
-}
-
-export function createCodeStep<I, O>(
-  params: Omit<CodeStep<I, O>, 'type'>,
-): CodeStep<I, O> {
-  return {
-    ...params,
-    type: 'CodeStep',
-  };
-}
-
-export function isCodeStep<I, O>(step: Step<I, O>): step is CodeStep<I, O> {
-  return step.type === 'CodeStep';
 }
 
 /**
  * Union type que representa todos os tipos possíveis de Step
  */
-export type Step<I = any, O = any> = AgentStep<I, O> | CodeStep<I, O>;
+export type Step<I = any, O = any> = AgentStep | CodeStep;
 
 export interface StepResult<Input = any, Output = any> {
   stepId: string; // identificador único do step

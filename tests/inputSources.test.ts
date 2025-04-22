@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { Workflow } from '../src/types/workflow/Workflow';
-import { createCodeStep } from '../src/types/workflow/Step';
 import { InputSource } from '../src/types/workflow/Input';
 import { type StructuredData } from '../src/types/workflow/StructuredData';
+import { CodeNode, type CodeNodeRunParams } from '../src/nodes/Code';
 
 describe('Input Sources', () => {
   // Create a simple code step
-  const firstStep = createCodeStep({
+  const firstStep = new CodeNode({
     name: 'Should multiply two numbers',
     inputSource: InputSource.DataObject,
     inputSchema: z.object({
@@ -21,12 +21,11 @@ describe('Input Sources', () => {
     outputSchema: z.object({
       calculation: z.number(),
     }),
-    run: async ({ stepInput }): Promise<StructuredData<any>> => {
+    run: async (params: CodeNodeRunParams): Promise<any> => {
+      const { stepInput } = params;
       if (!stepInput?.firstNumber.value || !stepInput?.secondNumber.value)
         throw new Error('stepInput is undefined');
-      console.log('codeStep input', stepInput);
       const aa = stepInput.firstNumber.value * stepInput.secondNumber.value;
-      console.log('aa,', aa);
       return {
         calculation: aa,
       } as any;
@@ -34,23 +33,26 @@ describe('Input Sources', () => {
   });
 
   it('[Step - InputSource.DataObject] Should use a object as input', async () => {
-    const testWorkflow = new Workflow({ codeStep: firstStep });
+    const testWorkflow = new Workflow({ firstStep });
     await testWorkflow.execute();
     const result = testWorkflow.getResult('rawData');
-    console.log('Workflow result:', result);
+    // console.log('Workflow result:', result);
     expect(result.calculation).toBe(6);
   });
 
   it('[Step - InputSource.LastStep] Should receive the output of the last step', async () => {
     // Create a simple code step
-    const secondStep = createCodeStep({
+    const secondStep = new CodeNode({
       name: 'Should multiply the result by 2',
-      inputSchema: firstStep.outputSchema, // use the first step's output schema
+      inputSchema: z.object({
+        calculation: z.number(),
+      }), // use the first step's output schema
       inputSource: InputSource.LastStep,
       outputSchema: z.object({
         finalNumber: z.number(),
       }),
-      run: async ({ stepInput }): Promise<StructuredData<any>> => {
+      run: async (params: CodeNodeRunParams): Promise<any> => {
+        const { stepInput } = params;
         if (!stepInput?.calculation.value)
           throw new Error('stepInput is undefined');
         // console.log('secondStep input', stepInput);
@@ -66,13 +68,14 @@ describe('Input Sources', () => {
 
   it('[Step - InputSource.Global] Should receive the global state as input', async () => {
     // Create a simple code step
-    const globalInputStep = createCodeStep({
+    const globalInputStep = new CodeNode({
       name: 'Should multiply the result by 2',
       inputSource: InputSource.Global,
       outputSchema: z.object({
         finalNumber: z.number(),
       }),
-      run: async ({ stepInput }): Promise<StructuredData<any>> => {
+      run: async (params: CodeNodeRunParams): Promise<any> => {
+        const { stepInput } = params;
         if (!stepInput?.firstStep?.output?.calculation?.value)
           throw new Error('stepInput is undefined');
         // console.log('globalInputStep input', stepInput);
@@ -93,14 +96,17 @@ describe('Input Sources', () => {
 
   it('[Step - InputSource.UserInput] Should ask for user input', async () => {
     // Create a simple code step
-    const userInputStep = createCodeStep({
+    const userInputStep = new CodeNode({
       name: 'Should multiply the result by 2',
-      inputSchema: firstStep.outputSchema, // use the first step's output schema
+      inputSchema: z.object({
+        calculation: z.number(),
+      }),
       inputSource: InputSource.UserInput,
       outputSchema: z.object({
         finalNumber: z.number(),
       }),
-      run: async ({ stepInput }): Promise<StructuredData<any>> => {
+      run: async (params: CodeNodeRunParams): Promise<any> => {
+        const { stepInput } = params;
         if (!stepInput?.firstNumber.value || !stepInput?.secondNumber.value)
           throw new Error('stepInput is undefined');
         // console.log('run stepInput', stepInput);

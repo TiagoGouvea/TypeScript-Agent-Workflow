@@ -1,21 +1,5 @@
-import {
-  type AgentStep,
-  type CodeStep,
-  isAgentStep,
-  isCodeStep,
-  type Step,
-  type StepResult,
-} from './Step.ts';
-import { z } from 'zod';
-import { callModel } from '../../llm/callModel.ts';
-import { zodResponseFormat } from 'openai/helpers/zod';
-import {
-  agentAsks,
-  agentSays,
-  error,
-  logStep,
-  workflowInfo,
-} from '../../utils/log.ts';
+import { type AgentStep, type Step } from './Step.ts';
+import { agentSays, workflowInfo } from '../../utils/log.ts';
 import {
   type RawData,
   type StructuredData,
@@ -23,8 +7,7 @@ import {
   rawDataObjectToStructuredData,
 } from './StructuredData.ts';
 import { getStepInput, InputSource } from './Input.ts';
-import { executeAgentStep } from './StepAgent.ts';
-import { executeCodeStep } from './StepCode.ts';
+import type { WorkflowNode } from './WorkflowNode.ts';
 
 /**
  * Motor de orquestração de steps.
@@ -48,8 +31,11 @@ export class Workflow {
     let lastStepResult: StructuredData<any> = {};
     let stepsCount = 1;
 
+    // console.log('stepKeys', stepKeys);
+
     for (const stepKey of stepKeys) {
-      const step = this.steps[stepKey];
+      const step: WorkflowNode = this.steps[stepKey];
+      // console.log(step);
       workflowInfo('Step ' + stepsCount++ + ' - ' + step.name);
       let stepResult: any;
       let stepInput: any;
@@ -67,13 +53,14 @@ export class Workflow {
       //////////////////////////////// Execute step  /////////////////////////////
 
       // Verificar o tipo de step e executar a lógica apropriada
-      if (isCodeStep(step)) {
-        stepResult = await executeCodeStep({ step, stepInput });
-      } else if (isAgentStep(step)) {
-        stepResult = await executeAgentStep({ step, stepInput });
-      } else {
-        throw new Error('Unknown step type: ' + JSON.stringify(step));
-      }
+      stepResult = await step.execute({ step, stepInput });
+      // if (isCodeStep(step)) {
+      //   stepResult = await executeCodeStep({ step, stepInput });
+      // } else if (isAgentStep(step)) {
+      //   stepResult = await executeAgentStep({ step, stepInput });
+      // } else {
+      //   throw new Error('Unknown step type: ' + JSON.stringify(step));
+      // }
       /// if..... ?
       stepResult = rawDataObjectToStructuredData(stepResult);
       // console.log('> stepResult', stepResult);
@@ -116,10 +103,10 @@ export class Workflow {
 
   getGlobal(workflowResulType: 'structuredData' | 'rawData') {
     if (workflowResulType === 'structuredData') return this.globalState;
-    console.log('globalState', this.globalState);
+    // console.log('globalState', this.globalState);
     const result: RawData = {};
     for (const key in this.globalState) {
-      console.log('key', key);
+      // console.log('key', key);
       result[key] = structuredDataToRawData(this.globalState[key].output);
     }
     return result;
