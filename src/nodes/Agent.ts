@@ -2,9 +2,23 @@ import { z } from 'zod';
 import { InputSource } from '../types/workflow/Input.ts';
 import { agentAsks, agentSays, error, logStep } from '../utils/log.ts';
 import { callModel } from '../llm/callModel.ts';
-import type { WorkflowNode } from '../types/workflow/WorkflowNode.ts';
+import {
+  type BaseNodeParams,
+  WorkflowNode,
+} from '../types/workflow/WorkflowNode.ts';
 
-export class AgentNode implements WorkflowNode {
+export interface AgentNodeParams extends BaseNodeParams {
+  systemPrompt?: string;
+}
+
+export class AgentNode extends WorkflowNode {
+  public systemPrompt?: string;
+
+  constructor(params: AgentNodeParams) {
+    super(params);
+    this.systemPrompt = params.systemPrompt;
+  }
+
   async execute({ step, stepInput }: { step: any; stepInput: any }) {
     try {
       // @todo SingleShot?
@@ -119,7 +133,7 @@ export class AgentNode implements WorkflowNode {
             responseFormat: z.object({ agentResponse: responseSchema }),
           });
           // Validate result with schema
-          console.log('llmResult', llmResult);
+          // console.log('llmResult', llmResult);
           // console.log('messages.length:', messages.length);
 
           messages.push({

@@ -20,3 +20,13 @@ export class WorkflowNode<I = any, O = any> {
     throw new Error('Not implemented');
   }
 }
+
+export interface BaseNodeParams {
+  name?: string;
+  inputSchema?: ZodType<I>;
+  inputSource?: InputSource;
+  inputDataObject?: RawData;
+  inputData?: StructuredData<I>;
+  outputSchema: ZodType<O>;
+  introductionText?: string;
+}

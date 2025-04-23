@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { Workflow } from '../src/types/workflow/Workflow';
-import { InputSource } from '../src/types/workflow/Input';
-import { CodeNode, type CodeNodeRunParams } from '../src/nodes/Code';
+import { CodeNode, CodeNodeRunParams } from '../../src/nodes/Code';
+import { InputSource } from '../../src/types/workflow/Input';
+import { Workflow } from '../../src/types/workflow/Workflow';
 
-describe('Input Sources', () => {
+describe('Nodes - Code', () => {
   // Create a simple code step
   const firstStep = new CodeNode({
     name: 'Should multiply two numbers',

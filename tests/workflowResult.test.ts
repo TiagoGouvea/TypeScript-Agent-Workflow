@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { Workflow } from '../src/types/workflow/Workflow';
-import { createCodeStep } from '../src/types/workflow/Step';
 import { type StructuredData } from '../src/types/workflow/StructuredData';
 import { InputSource } from '../src/types/workflow/Input';
+import { CodeNode } from '../src/nodes/Code';
 
 describe('Workflow Result Values', () => {
   // Create a simple code step
-  const codeStep = createCodeStep({
+  const codeStep = new CodeNode({
     name: 'Should multiply two numbers',
     inputSource: InputSource.DataObject,
     inputSchema: z.object({

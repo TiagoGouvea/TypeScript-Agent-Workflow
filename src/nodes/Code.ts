@@ -1,6 +1,9 @@
 import { error } from '../utils/log.ts';
-import { WorkflowNode } from '../types/workflow/WorkflowNode.ts';
-import type { BaseNodeParams, NodeRunParams } from '../types/workflow/Step.ts';
+import {
+  type BaseNodeParams,
+  WorkflowNode,
+} from '../types/workflow/WorkflowNode.ts';
+import type { NodeRunParams } from '../types/workflow/Step.ts';
 
 export interface CodeNodeParams extends BaseNodeParams {
   run: (params: CodeNodeRunParams) => Promise<any>;
