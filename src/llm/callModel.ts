@@ -3,21 +3,24 @@ import { jsonrepair } from 'jsonrepair';
 import OpenAI from 'openai';
 import { parseChatCompletion } from 'openai/lib/parser';
 import { llmInfo } from '../utils/log.ts';
+import type { Tool } from 'openai/resources/responses/responses';
+import type { NodeTool } from '../_workflows/dailyNews/webSearch.ts';
 
 export async function callModel({
   systemPrompt,
   messages,
   responseFormat,
+  tools,
 }: {
   systemPrompt?: string;
   messages: any[];
   responseFormat?: any;
+  tools?: NodeTool[];
 }) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
 
   messages = messages ? structuredClone(messages) : [];
   if (systemPrompt) messages.unshift({ role: 'system', content: systemPrompt });
-
   try {
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -37,24 +40,53 @@ export async function callModel({
     // console.dir(tools ? tools : false, { depth: null });
     // if tools calls
 
+    enum completionTypes {
+      response = 'response',
+      completion = 'completion',
+    }
+    const completionType: completionTypes = completionTypes.response;
+
     let firstCall = true;
     let hasToolCalls = false;
     let completion;
     let toolsCalled = false;
     let result;
 
+    const messagesValue =
+      messages && messages.length
+        ? messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          }))
+        : [];
+
+    const toolsValue =
+      tools && tools.length
+        ? tools.map((tollNode) => tollNode.toolDeclaration)
+        : [];
+
     let options = {
       model: 'gpt-4.1-mini',
-      messages:
-        messages && messages.length
-          ? messages.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-            }))
-          : [],
-      response_format: zodResponseFormat(responseFormat, 'parsed_response'),
-      // tools: tools,
+      tools: toolsValue,
     };
+
+    // console.log('options', options);
+
+    if (completionType === completionTypes.completion) {
+      options.messages = messagesValue;
+      options.response_format = zodResponseFormat(
+        responseFormat,
+        'parsed_response',
+      );
+    } else {
+      options.input = messagesValue;
+      options.text = {
+        format: {
+          ...zodResponseFormat(responseFormat, 'parsed_response').json_schema,
+          type: 'json_schema',
+        },
+      };
+    }
 
     // console.log('messages', messages);
 
@@ -67,30 +99,26 @@ export async function callModel({
       //   tools?.length ? 'com ferramentas' : 'sem ferramentas',
       //   '...',
       // );
-      llmInfo('Calling OpenAI...');
-      // completion = await openai.beta.chat.completions.parse(options);
-      completion = await openai.chat.completions.create(options);
+      llmInfo('Calling OpenAI...' + completionType);
+
+      if (completionType === completionTypes.completion) {
+        completion = await openai.completions.create(options);
+      } else {
+        completion = await openai.responses.create(options);
+      }
+      console.log('🛜 CALLING OpenAI');
+      // console.log('🛜 OpenAI response:', completion);
+      // console.log('🛜 OpenAI response.output:', completion.output);
+
       try {
-        completion = parseChatCompletion(completion, options);
+        if (completionType === completionTypes.completion) {
+          completion = parseChatCompletion(completion, options);
+        }
       } catch (error) {
-        console.error('🚨 Error parsing completion:', error.split('\n')[0]);
+        console.error(error);
+        console.error('🚨 Error parsing completion:');
         // console.log('completion:');
         // console.dir(completion.choices[0].message.content, { depth: null });
-
-        function extractFirstJsonObject(input: string) {
-          const startIndex = input.indexOf('{');
-          const endIndex = input.indexOf('}', startIndex);
-          if (startIndex !== -1 && endIndex !== -1)
-            return input.substring(startIndex, endIndex + 1);
-          return null;
-        }
-
-        const fixedContent = extractFirstJsonObject(
-          jsonrepair(completion.choices[0].message.content),
-        );
-        console.log('(try) fix completion content:', fixedContent);
-        completion.choices[0].message.content = fixedContent;
-        completion = parseChatCompletion(completion, options);
       }
       // parseChatCompletion(a);
       // console.log(
@@ -99,79 +127,101 @@ export async function callModel({
       // );
       // debugOAI('completion', completion);
 
-      hasToolCalls = completion.choices[0].message.tool_calls?.length > 0;
+      const choice =
+        completionType === completionTypes.completion
+          ? completion.choices[0]
+          : completion.output[completion.output.length - 1];
+
+      hasToolCalls =
+        choice?.message?.tool_calls?.length > 0 ||
+        choice?.type == 'function_call';
 
       if (hasToolCalls) {
-        // console.log('🛜 hasToolCalls...');
         if (!tools || !tools.length) throw new Error('No tools found');
+        // console.log('🛜 hasToolCalls...', completion);
 
         toolsCalled = true;
-        const toolCalls = completion.choices[0].message.tool_calls;
-        // console.log('🛜 toolCall', toolCalls[0]);
+        let toolCalls;
+        if (completionType === completionTypes.completion) {
+          toolCalls = choice.message?.tool_calls;
+        } else {
+          toolCalls = [{ function: choice }];
+        }
+        console.log('🛜 toolCall', toolCalls[0]);
         for (let toolCall of toolCalls) {
           // Check if it's calling a agent as a tool (wrong way)
-          if (!tools.find((t) => t.function.name === toolCall!.function.name)) {
-            const rest = {
-              role: 'function',
-              name: toolCall!.function.name,
-              content:
-                toolCall!.function.name +
-                ' não é uma tool válida (não confundir agentes com tools)',
-            };
-            messages.push({ ...rest, functionCall: toolCall });
-            console.log('Wrong tool call: ' + toolCall!.function.name);
-            console.log('tools');
-            console.dir(tools, { depth: null });
-            continue;
-          } else {
-            // console.log(
-            //   '🛜 toolCall:',
-            //   toolCall!.function.name,
-            //   toolCall!.function.arguments,
-            // );
-            // find the tool
-            const callToolNode = toolNode.tools.find(
-              (t) => t.name === toolCall!.function.name,
-            );
-            if (!callToolNode)
-              throw new Error('Tool not found:' + toolCall!.function.name);
-            try {
-              const rr = await callToolNode.invoke(
-                toolCall!.function.parsed_arguments,
-              );
+          console.log(
+            '🛜 toolCall:',
+            toolCall!.function.name,
+            toolCall!.function.arguments,
+          );
+          // find the tool
+          const callToolNode = tools.find(
+            (t) => t.toolDeclaration.name === toolCall!.function.name,
+          );
+          if (!callToolNode)
+            throw new Error('Tool not found:' + toolCall!.function.name);
+          try {
+            const args =
+              toolCall!.function.parsed_arguments ||
+              JSON.parse(toolCall.function.arguments);
+            const rr = await callToolNode.run(args);
+            // console.log('rr', rr);
+
+            // debugOAI('⏩⏩👉 rest', rest);
+            if (completionType === completionTypes.completion) {
               const rest = {
-                role: 'function',
+                role: 'tool',
                 name: toolCall!.function.name,
                 content: JSON.stringify(rr),
                 // tool_call_id: toolCall.id,
               };
-              // debugOAI('⏩⏩👉 rest', rest);
-              messages.push({ ...rest, functionCall: toolCall });
-            } catch (error: any) {
-              console.log(
-                '🚨 Error calling tool:',
-                toolCall!.function.name,
-                'args: ',
-                toolCall!.function.arguments,
-              );
-              console.error(error);
-              process.exit(1);
+              messagesValue.push({ ...rest, functionCall: toolCall });
+            } else {
+              messagesValue.push(completion.output[0]);
+              const rest = {
+                type: 'function_call_output',
+                call_id: toolCall.function.call_id,
+                output: JSON.stringify(rr),
+              };
+              // console.log('rest', rest);
+              messagesValue.push(rest);
             }
+          } catch (error: any) {
+            console.log(
+              '🚨 Error calling tool:',
+              toolCall!.function.name,
+              'args: ',
+              toolCall!.function.arguments,
+            );
+            console.error(error);
+            process.exit(1);
           }
         }
-        options.tools = undefined;
+        // options.tools = undefined;
         // Run completions again
         // @todo add to state
-        options.messages = messages;
+        if (completionType === completionTypes.completion)
+          options.messages = messagesValue;
+        else options.input = messagesValue;
       } else {
-        result = completion.choices[0].message.parsed;
+        // console.log('choice', choice);
+        result =
+          completionType === completionTypes.completion
+            ? choice.message.parsed
+            : choice.content[0].text;
+        // console.log('result', result);
         hasToolCalls = false;
       }
 
       firstCall = false;
     }
 
-    return result;
+    if (responseFormat && typeof result !== 'object') {
+      result = JSON.parse(result);
+    }
+
+    return { result, messages: messagesValue };
   } catch (e) {
     console.log('🚨 Error calling OpenAI:');
     console.error(e);

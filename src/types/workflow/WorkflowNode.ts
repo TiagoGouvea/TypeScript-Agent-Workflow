@@ -1,16 +1,28 @@
 import { ZodType } from 'zod';
-import { type NodeRunParams } from './Step';
 import type { InputSource } from './Input.ts';
 import type { RawData, StructuredData } from './StructuredData.ts';
+import type { NodeRunParams } from './Step.ts';
 
-export class WorkflowNode<I = any, O = any> {
+export interface BaseNodeParams {
+  name?: string;
+  inputSchema?: ZodType;
+  inputSource?: InputSource;
+  inputDataObject?: RawData;
+  inputData?: StructuredData;
+  outputSchema: ZodType;
+  introductionText?: string;
+  allowHumanResponse?: boolean;
+}
+
+export class WorkflowNode {
   public name?: string;
-  public inputSchema?: ZodType<I>;
+  public inputSchema?: ZodType;
   public inputSource?: InputSource;
   public inputDataObject?: RawData;
-  public inputData?: StructuredData<I>;
-  public outputSchema!: ZodType<O>;
+  public inputData?: StructuredData;
+  public outputSchema!: ZodType;
   public introductionText?: string;
+  public allowHumanResponse?: boolean = false;
 
   constructor(params: any) {
     Object.assign(this, params);
@@ -19,14 +31,4 @@ export class WorkflowNode<I = any, O = any> {
   async execute(params: NodeRunParams): Promise<any> {
     throw new Error('Not implemented');
   }
-}
-
-export interface BaseNodeParams {
-  name?: string;
-  inputSchema?: ZodType<I>;
-  inputSource?: InputSource;
-  inputDataObject?: RawData;
-  inputData?: StructuredData<I>;
-  outputSchema: ZodType<O>;
-  introductionText?: string;
 }

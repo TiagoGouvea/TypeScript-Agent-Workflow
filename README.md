@@ -96,7 +96,8 @@ export const myWorkflow = new Workflow({ agentTest, writeStory });
 
 ## Exemples
 
-- `/src/_workflows/agentTest/` Two step workflow with user input on the firs step, with LLM interaction on both steps.
+- `/src/_workflows/createCharacter/` Simpler - Two steps workflow with user input on the firs step, with LLM interaction on both steps.
+- `/src/_workflows/dailyNews/` Simpler - Two steps workflow with user input on the firs step, with LLM interaction on both steps.
 
 ## Architecture
 
@@ -114,3 +115,12 @@ ISC
 ## Author
 
 Tiago Gouvêa
+
+
+
+
+
+
+
+
+

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { createAgentStep } from '../../types/workflow/Step.ts';
 import { Workflow } from '../../types/workflow/Workflow.ts';
 import { InputSource } from '../../types/workflow/Input.ts';
 

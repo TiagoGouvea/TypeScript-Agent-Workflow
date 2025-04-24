@@ -64,7 +64,7 @@ export function inputSchemaToStructuredData(inputSchema: ZodType<any>) {
 }
 
 export function rawDataObjectToStructuredData(rawDataObject: RawData) {
-  logStep('inputDataObjectToInputData rawDataObject', rawDataObject);
+  // logStep('inputDataObjectToInputData rawDataObject', rawDataObject);
   const stepInputData: StructuredData<any> = {};
   for (const key of Object.keys(rawDataObject)) {
     logStep('key', key, rawDataObject[key]);
@@ -72,7 +72,7 @@ export function rawDataObjectToStructuredData(rawDataObject: RawData) {
       value: rawDataObject[key],
     };
   }
-  logStep('inputDataObjectToInputData result', stepInputData);
+  // logStep('inputDataObjectToInputData result', stepInputData);
   return stepInputData;
 }
 

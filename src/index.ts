@@ -12,8 +12,9 @@ const workflowsDir = './src/_workflows';
 async function executeWorkflow(workflowName: string) {
   try {
     systemInfo(`🚀 Executing workflow ${ucfirst(workflowName)}`);
-
-    await import(`./_workflows/${workflowName}/${workflowName}.ts`);
+    const fileName = `./_workflows/${workflowName}/${workflowName}.ts`;
+    console.log(fileName);
+    await import(fileName);
     // if (workflowModule && workflowModule.testWorkflow) {
     //   console.log('');
     //   await workflowModule.testWorkflow.execute();
@@ -25,6 +26,7 @@ async function executeWorkflow(workflowName: string) {
     // }
   } catch (err) {
     console.error(`Error executing workflow ${workflowName}:`, err);
+    console.error(err);
     process.exit(1);
   }
 }

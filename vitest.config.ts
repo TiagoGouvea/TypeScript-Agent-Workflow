@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  root: '.',
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
@@ -9,6 +11,7 @@ export default defineConfig({
     logHeapUsage: true,
     silent: false,
     reporters: ['verbose'],
-    testTimeout: 30000,
+    testTimeout: 120000,
+    env: loadEnv(mode, process.cwd(), ''),
   },
-});
+}));

@@ -1,4 +1,3 @@
-import { type AgentStep, type Step } from './Step.ts';
 import { agentSays, workflowInfo } from '../../utils/log.ts';
 import {
   type RawData,
@@ -13,11 +12,11 @@ import type { WorkflowNode } from './WorkflowNode.ts';
  * Motor de orquestração de steps.
  */
 export class Workflow {
-  steps: Record<string, Step<any, any>>;
+  steps: Record<string, WorkflowNode>;
   lastStepResult: StructuredData<any> = {};
   globalState: Record<string, { input: any; output: any }> = {};
 
-  constructor(steps: Record<string, Step<any, any>>) {
+  constructor(steps: Record<string, WorkflowNode>) {
     this.steps = steps;
   }
 
@@ -30,30 +29,34 @@ export class Workflow {
     const stepKeys = Object.keys(this.steps) as (keyof typeof this.steps)[];
     let lastStepResult: StructuredData<any> = {};
     let stepsCount = 1;
-
     // console.log('stepKeys', stepKeys);
 
     for (const stepKey of stepKeys) {
-      const step: WorkflowNode = this.steps[stepKey];
+      const stepNode: WorkflowNode = this.steps[stepKey];
       // console.log(step);
-      workflowInfo('Step ' + stepsCount++ + ' - ' + step.name);
+      workflowInfo(
+        'Step ' +
+          stepsCount++ +
+          ' - ' +
+          (stepNode.name ? stepNode.name : stepKey),
+      );
       let stepResult: any;
       let stepInput: any;
 
       //////// Validate step
-      this.validateStep(step);
+      this.validateStep(stepNode);
 
       ////// Introduction
-      if (step.introductionText) agentSays(step.introductionText);
+      if (stepNode.introductionText) agentSays(stepNode.introductionText);
 
       /////////////////////////////////////// Input  /////////////////////////////
-      stepInput = await getStepInput(this, step, lastStepResult);
+      stepInput = await getStepInput(this, stepNode, lastStepResult);
       // console.log('> stepInput', stepInput);
 
       //////////////////////////////// Execute step  /////////////////////////////
 
       // Verificar o tipo de step e executar a lógica apropriada
-      stepResult = await step.execute({ step, stepInput });
+      stepResult = await stepNode.execute({ step: stepNode, stepInput });
       // if (isCodeStep(step)) {
       //   stepResult = await executeCodeStep({ step, stepInput });
       // } else if (isAgentStep(step)) {
@@ -112,13 +115,21 @@ export class Workflow {
     return result;
   }
 
-  private validateStep(step: AgentStep<any, any> | CodeStep<any, any>) {
+  private validateStep(step: WorkflowNode) {
+    //@todo add
+    // first step cannot use lastResult
+    // Error: inputSchema is required when step.inputSource is not InputSource.Global
+
     if (step.inputSource === InputSource.DataObject && !step.inputDataObject) {
       throw new Error(
         'inputDataObject is required when step.inputSource is InputSource.DataObject',
       );
     }
-    if (step.inputSource !== InputSource.Global && !step.inputSchema) {
+    if (
+      step.inputSource &&
+      step.inputSource !== InputSource.Global &&
+      !step.inputSchema
+    ) {
       throw new Error(
         'inputSchema is required when step.inputSource is not InputSource.Global',
       );

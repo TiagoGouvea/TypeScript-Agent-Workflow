@@ -5,8 +5,8 @@ import {
   rawDataObjectToStructuredData,
 } from './StructuredData.ts';
 import { agentAsks } from '../../utils/log.ts';
-import type { AgentStep, CodeStep } from './Step.ts';
 import type { Workflow } from './Workflow.ts';
+import type { WorkflowNode } from './WorkflowNode.ts';
 
 /**
  * Enum para definir a fonte de entrada de um passo
@@ -21,7 +21,7 @@ export enum InputSource {
 
 export const getStepInput = (
   workflow: Workflow,
-  step: AgentStep<any, any> | CodeStep<any, any>,
+  step: WorkflowNode,
   lastStepOutput: StructuredData<any>,
 ) => {
   // @todo

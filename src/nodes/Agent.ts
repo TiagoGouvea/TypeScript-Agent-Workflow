@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { any, z } from 'zod';
 import { InputSource } from '../types/workflow/Input.ts';
 import { agentAsks, agentSays, error, logStep } from '../utils/log.ts';
 import { callModel } from '../llm/callModel.ts';
@@ -6,17 +6,27 @@ import {
   type BaseNodeParams,
   WorkflowNode,
 } from '../types/workflow/WorkflowNode.ts';
+import type { Tool } from 'openai/resources/responses/responses';
+import type { NodeTool } from '../_workflows/dailyNews/webSearch.ts';
 
 export interface AgentNodeParams extends BaseNodeParams {
   systemPrompt?: string;
+  tools?: NodeTool[];
+}
+
+interface lmresult {
+  result: any;
+  messages: any[];
 }
 
 export class AgentNode extends WorkflowNode {
   public systemPrompt?: string;
+  public tools?: NodeTool[];
 
   constructor(params: AgentNodeParams) {
     super(params);
     this.systemPrompt = params.systemPrompt;
+    this.tools = params.tools;
   }
 
   async execute({ step, stepInput }: { step: any; stepInput: any }) {
@@ -32,17 +42,24 @@ export class AgentNode extends WorkflowNode {
       // Juntar o input no prompt, como user?
       let systemPrompt;
       let responseSchema = z.object({
-        humanResponse: z
-          .string()
-          .describe(
-            'Uma informação para ser apresentada ao usuário humano. Nunca deve conter perguntas.',
-          ),
+        // responseStorage: z.object({}).describe('Use it to store information'),
+        responseStorage: z.string().describe('Use it to store information'),
         gotToNextStep: z
           .boolean()
           .describe(
             'Termina e etapa atual e deixa o workflow seguir para a próxima etapa',
           ),
       });
+
+      if (step.allowHumanResponse) {
+        responseSchema.extend({
+          humanResponse: z
+            .string()
+            .describe(
+              'Uma informação para ser apresentada ao usuário humano. Nunca deve conter perguntas.',
+            ),
+        });
+      }
 
       const allowUserInteraction = step.inputSource == InputSource.UserInput;
 
@@ -105,7 +122,7 @@ export class AgentNode extends WorkflowNode {
 
       // lastResponseSchema = responseSchema;
 
-      let llmResult: any = null;
+      let llmResult: lmresult;
       let messages = [
         { role: 'user', content: 'inputData: ' + JSON.stringify(stepInput) },
       ];
@@ -131,30 +148,30 @@ export class AgentNode extends WorkflowNode {
             systemPrompt,
             messages,
             responseFormat: z.object({ agentResponse: responseSchema }),
+            tools: this.tools,
           });
           // Validate result with schema
           // console.log('llmResult', llmResult);
           // console.log('messages.length:', messages.length);
+          const agentResponse = llmResult.result.agentResponse;
 
           messages.push({
             role: 'assistant',
-            content: JSON.stringify(llmResult),
+            content: JSON.stringify(llmResult.result),
           });
 
-          if (llmResult.agentResponse.humanResponse)
-            agentSays(llmResult.agentResponse.humanResponse);
+          if (agentResponse.humanResponse)
+            agentSays(agentResponse.humanResponse);
 
-          if (llmResult.agentResponse.humanQuestion && allowUserInteraction) {
-            const value = await agentAsks(
-              llmResult.agentResponse.humanQuestion,
-            );
+          if (agentResponse.humanQuestion && allowUserInteraction) {
+            const value = await agentAsks(agentResponse.humanQuestion);
             messages.push({ role: 'user', content: value });
           }
 
           shouldContinueInThisStep =
-            !!(llmResult.agentResponse.humanQuestion && allowUserInteraction) ||
-            !llmResult.agentResponse.gotToNextStep;
-          // console.log('shouldContinueInThisStep?', shouldContinueInThisStep);
+            !!(agentResponse.humanQuestion && allowUserInteraction) ||
+            !agentResponse.gotToNextStep;
+          console.log('shouldContinueInThisStep?', shouldContinueInThisStep);
         } catch (err: any) {
           error('Error calling the model:', err.message || err);
           console.error(err);
@@ -170,11 +187,7 @@ export class AgentNode extends WorkflowNode {
       //   messages,
       //   responseSchema,
       // });
-      const agentResult = await formatStepResult(step, {
-        llmResult,
-        messages,
-        responseSchema,
-      });
+      const agentResult = await formatStepResult(step, llmResult);
 
       return agentResult;
     } catch (err: any) {
@@ -184,12 +197,7 @@ export class AgentNode extends WorkflowNode {
   }
 }
 
-async function formatStepResult(
-  step: any,
-  lastResponseSchema: any,
-): Promise<any> {
-  const { llmResult, messages, responseSchema } = lastResponseSchema;
-
+async function formatStepResult(step: any, llmResult: lmresult): Promise<any> {
   // @todo quando tenho que rodar outra vez pra formatar o retorno?
   // if (
   //   step.outputSchema &&
@@ -200,20 +208,22 @@ async function formatStepResult(
   // console.log('messages', messages);
   // Tenho que retornar o output no formato definido....
   // Quando ele mandar terminar, rodar mais uma vez com o outputSchema definido de saída
-  return await callModel({
+  const messages = [
+    ...llmResult.messages,
+    {
+      role: 'system',
+      content:
+        'Convert the above output to the following schema: ' +
+        JSON.stringify(step.outputSchema),
+    },
+  ].filter((msg) =>
+    ['user', 'system', 'developer', 'assistant'].includes(msg.role),
+  );
+  // console.log('messagess', messages);
+  const lastLlmResult = await callModel({
     systemPrompt: step.systemPrompt,
-    messages: [
-      ...messages,
-      {
-        role: 'system',
-        content:
-          'Convert the above output to the following schema: ' +
-          JSON.stringify(step.outputSchema),
-      },
-    ],
-    responseFormat: step.outputSchema ? step.outputSchema : z.any(),
+    messages,
+    responseFormat: step.outputSchema ? step.outputSchema : undefined,
   });
-  // } else {
-  //   return llmResult;
-  // }
+  return lastLlmResult.result;
 }
