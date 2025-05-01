@@ -13,3 +13,6 @@ backlog.md
 # IDE and Computer files
 .idea/
 DS_Store
+
+# Other tools
+**/.claude/**

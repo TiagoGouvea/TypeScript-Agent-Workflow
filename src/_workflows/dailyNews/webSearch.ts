@@ -1,16 +1,6 @@
 import axios from 'axios';
-import type { Tool } from 'openai/resources/responses/responses';
 import chalk from 'chalk';
-
-if (!process.env.SERPER_API_KEY)
-  throw new Error(
-    'You must set the SERPER_API_KEY environment variable to use webSearch.',
-  );
-
-export type NodeTool = {
-  toolDeclaration: Tool;
-  run: any;
-};
+import type { NodeTool } from './webScrap.ts';
 
 export const webSearch: NodeTool = {
   toolDeclaration: {
@@ -26,7 +16,9 @@ export const webSearch: NodeTool = {
         },
         query: {
           type: 'string',
-          description: 'Termo de busca a ser pesquisado no Google.',
+          description:
+            'Termo de busca a ser pesquisado no Google.' +
+            'Varie os termos entre buscas consecutivas para obter resultados variados',
         },
         gl: {
           type: 'string',
@@ -56,11 +48,11 @@ export const webSearch: NodeTool = {
   },
   run: async (params) => {
     const { type, query, interval, gl, location } = params;
-    console.log('webSearch params', params);
+    // console.log('webSearch params', params);
 
     console.log(
       chalk.bgCyan(' WEB SEARCH '),
-      chalk.cyan(`🔎 Searching on Google for : ${query} (${type})`),
+      chalk.cyan(`Searching on Google for: ${query} (${type})`),
     );
 
     // Map user-friendly interval to `tbs` values
@@ -98,7 +90,7 @@ export const webSearch: NodeTool = {
 
     try {
       const response = await axios.request(config);
-      console.log('webSearch response.data.len', response.data[type].length);
+      // console.log('webSearch response.data.len', response.data[type].length);
       if (!response.data[type]) {
         console.log('🚨🚨🚨');
         console.log(response);

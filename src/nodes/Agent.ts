@@ -1,6 +1,12 @@
 import { any, z } from 'zod';
 import { InputSource } from '../types/workflow/Input.ts';
-import { agentAsks, agentSays, error, logStep } from '../utils/log.ts';
+import {
+  agentAsks,
+  agentSays,
+  logError,
+  logStep,
+  workflowInfo,
+} from '../utils/log.ts';
 import { callModel } from '../llm/callModel.ts';
 import {
   type BaseNodeParams,
@@ -172,8 +178,10 @@ export class AgentNode extends WorkflowNode {
             !!(agentResponse.humanQuestion && allowUserInteraction) ||
             !agentResponse.gotToNextStep;
           console.log('shouldContinueInThisStep?', shouldContinueInThisStep);
+          // if (!shouldContinueInThisStep)
+          //   console.log('agentResponse', agentResponse);
         } catch (err: any) {
-          error('Error calling the model:', err.message || err);
+          logError('Error calling the model:', err.message || err);
           console.error(err);
           process.exit(1);
         }
@@ -187,11 +195,12 @@ export class AgentNode extends WorkflowNode {
       //   messages,
       //   responseSchema,
       // });
+      workflowInfo('Formating step results');
       const agentResult = await formatStepResult(step, llmResult);
 
       return agentResult;
     } catch (err: any) {
-      error('Error calling the model:', err.message || err);
+      logError('Error calling the model:', err.message || err);
       process.exit(1);
     }
   }

@@ -28,7 +28,8 @@ export const webScraper: NodeTool = {
         },
         lookFor: {
           type: 'string',
-          description: 'Information needed',
+          description:
+            'Sentence with the information that the model should look for',
         },
       },
       additionalProperties: false,
@@ -37,11 +38,11 @@ export const webScraper: NodeTool = {
   },
   run: async (params) => {
     const { url, lookFor } = params;
-    console.log('webScraper params', params);
+    // console.log('webScraper params', params);
 
     console.log(
       chalk.bgCyan(' WEB SCRAPER '),
-      chalk.cyan(`🔎 Scraping looking for ${lookFor} on ${url}`),
+      chalk.cyan(`🔎 Scraping looking for "${lookFor}" at ${url}`),
     );
 
     try {
@@ -67,14 +68,15 @@ export const webScraper: NodeTool = {
         );
 
         console.log('--------------------------------------');
-        // console.log('content', content);
-        // const stripedContent = stripHtml(content);
-        // console.log('stripedContent', stripedContent);
-
-        // console.log('--------------------------------------');
-        const simplifiedContent = await simplifyContent(content, lookFor);
-
-        // console.log('simplifiedContent', simplifiedContent);
+        console.log('content', content);
+        const stripedContent = stripHtml(content);
+        console.log('stripedContent', stripedContent);
+        console.log('--------------------------------------');
+        const simplifiedContent = await simplifyContent(
+          stripedContent,
+          lookFor,
+        );
+        console.log('simplifiedContent', simplifiedContent);
 
         return simplifiedContent;
       } else {
@@ -119,20 +121,22 @@ export async function simplifyContent(
   lookFor: string,
 ): Promise<string> {
   const prompt = `
-    Você é um assistente especializado em processar HTML. Eu fornecerei um corpo HTML, e sua tarefa será retornar o conteúdo principal em texto puro.
+    Você é um assistente especializado em processar HTML. 
+    Eu fornecerei um conteúdo HTML, e sua tarefa é procurar dentro desse HTML e retornar o conteúdo que estamos procurando.
+    
     Remova:
     - Todo o CSS
     - Tags HTML
     - Menus de navegação ou rodapés
     - Publicidade ou elementos irrelevantes
     
-    Foque em:
+    Busque por:
     - Conteúdo relacionado ao tópico "${lookFor}"
     
-    
     Retorne:
-    - O texto que está diretamente relacionado ao que foi solicitado
+    - O texto no HTML que está diretamente relacionado ao que foi solicitado
     - Links relevantes para se obter mais informações em uma próxima interação
+    - Não retorne nenhuma informação que não esteja explicitamente no HTML fornecido
     
     # Aqui está o HTML:
     ${htmlBody}`;
@@ -147,7 +151,8 @@ export async function simplifyContent(
       messages: [{ role: 'user', content: prompt }],
     });
 
-    console.log('repsonse', response.choices);
+    // console.log('prompt', prompt);
+    console.log('response', response.choices);
 
     if (response.choices?.[0]?.message?.content) {
       return response.choices[0].message.content.trim();

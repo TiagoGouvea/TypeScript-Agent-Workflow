@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Workflow } from '../../types/workflow/Workflow.ts';
 import { InputSource } from '../../types/workflow/Input.ts';
 import { AgentNode } from '../../nodes/Agent.ts';
-import { openAiWebSearchTool } from './tools.ts';
+import { webSearch } from './webSearch.ts';
 
 // Steps
 // 1 - understandSubject - Ask the subject of the news, the interval, source languages
@@ -11,7 +11,6 @@ import { openAiWebSearchTool } from './tools.ts';
 
 const understandSubject = new AgentNode({
   introductionText: 'I will create a daily news summary for you',
-  // Step Input
   inputSource: InputSource.UserInput,
   inputSchema: z.object({
     subject: z.string().describe('What subject do you want to search about?'),
@@ -46,25 +45,53 @@ const searchNews = new AgentNode({
   introductionText: 'Searching for the news',
   inputSource: InputSource.LastStep,
   inputSchema: understandSubject.outputSchema,
-  // Step Output
   outputSchema: z.object({
     news: z.array(
       z.object({
         url: z.string(),
         title: z.string(),
         summary: z.string(),
-        author: z.string(),
         date: z.string(),
         source: z.string(),
         keywords: z.array(z.string()),
-        sentiment: z.number(),
       }),
     ),
   }),
-  systemPrompt: `You must search news about the subject, in the interval and in the source languages the user specified.`,
-  tools: [openAiWebSearchTool],
+  systemPrompt: `
+  You must search news about the subject, in the interval and in the source languages the user specified.
+  Search for at least 50 news and return at lesta 50 news, so on the next step the workflow will filter and ranking the best.
+  `,
+  tools: [webSearch],
 });
 
-const testWorkflow = new Workflow({ understandSubject });
+const writeNews = new AgentNode({
+  introductionText: 'I will write the final daily news',
+  inputSource: InputSource.LastStep,
+  inputSchema: searchNews.outputSchema,
+  outputSchema: z.object({
+    markdown: z.string(),
+  }),
+  systemPrompt: `
+  You must write a newsletter about the previous subject, ranking the most relevant news first.
+  
+  Return the markdown like
+  
+  # News Title
+  [link]
+  [Source] - [date] 
+  [Summary]
+  
+  # News Title
+  [link]
+  [Source] - [date] 
+  [Summary]
+  `,
+  tools: [webSearch],
+});
+
+const testWorkflow = new Workflow({ understandSubject, searchNews, writeNews });
 await testWorkflow.execute();
-console.log(testWorkflow.getResult('rawData'));
+
+console.log('-----------------------');
+console.log('Here is the daily news!');
+console.log(testWorkflow.getResult('rawData').markdown);

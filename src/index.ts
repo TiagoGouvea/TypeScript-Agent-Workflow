@@ -13,7 +13,7 @@ async function executeWorkflow(workflowName: string) {
   try {
     systemInfo(`🚀 Executing workflow ${ucfirst(workflowName)}`);
     const fileName = `./_workflows/${workflowName}/${workflowName}.ts`;
-    console.log(fileName);
+    // console.log(fileName);
     await import(fileName);
     // if (workflowModule && workflowModule.testWorkflow) {
     //   console.log('');

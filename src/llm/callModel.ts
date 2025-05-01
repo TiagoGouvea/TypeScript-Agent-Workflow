@@ -1,10 +1,10 @@
 import { zodResponseFormat } from 'openai/helpers/zod';
-import { jsonrepair } from 'jsonrepair';
 import OpenAI from 'openai';
 import { parseChatCompletion } from 'openai/lib/parser';
-import { llmInfo } from '../utils/log.ts';
-import type { Tool } from 'openai/resources/responses/responses';
+import { logError, llmInfo } from '../utils/log.ts';
 import type { NodeTool } from '../_workflows/dailyNews/webSearch.ts';
+import type { ResponseCreateParams } from 'openai/resources/responses/responses';
+import type { CompletionCreateParams } from 'openai/resources/completions';
 
 export async function callModel({
   systemPrompt,
@@ -21,11 +21,26 @@ export async function callModel({
 
   messages = messages ? structuredClone(messages) : [];
   if (systemPrompt) messages.unshift({ role: 'system', content: systemPrompt });
+  let firstCall = true;
+  let hasToolCalls = false;
+  let completion;
+  let toolsCalled = false;
+  let result;
+  let openai: OpenAI;
+  let options: ResponseCreateParams | CompletionCreateParams;
+  let messagesValue: [];
+
+  enum completionTypes {
+    response = 'response',
+    completion = 'completion',
+  }
+
+  const completionType: completionTypes = completionTypes.response;
+
   try {
-    const openai = new OpenAI({
+    openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
-
     // const validTargetAgentNodes =
     //   targetAgentNodes.length > 0 ? targetAgentNodes : ['endWorkflow'];
     // console.log(validTargetAgentNodes);
@@ -40,19 +55,7 @@ export async function callModel({
     // console.dir(tools ? tools : false, { depth: null });
     // if tools calls
 
-    enum completionTypes {
-      response = 'response',
-      completion = 'completion',
-    }
-    const completionType: completionTypes = completionTypes.response;
-
-    let firstCall = true;
-    let hasToolCalls = false;
-    let completion;
-    let toolsCalled = false;
-    let result;
-
-    const messagesValue =
+    messagesValue =
       messages && messages.length
         ? messages.map((msg) => ({
             role: msg.role,
@@ -65,7 +68,7 @@ export async function callModel({
         ? tools.map((tollNode) => tollNode.toolDeclaration)
         : [];
 
-    let options = {
+    options = {
       model: 'gpt-4.1-mini',
       tools: toolsValue,
     };
@@ -87,7 +90,13 @@ export async function callModel({
         },
       };
     }
+  } catch (error) {
+    logError('callModel params error', error);
+    console.error(error);
+    throw error;
+  }
 
+  try {
     // console.log('messages', messages);
 
     while (firstCall || hasToolCalls) {
@@ -95,20 +104,19 @@ export async function callModel({
       // console.dir(options.messages, { depth: null });
       // console.dir(options.response_format, { depth: null });
       // console.log(
-      //   '🛜 Pensando ',
+      //   'Pensando ',
       //   tools?.length ? 'com ferramentas' : 'sem ferramentas',
       //   '...',
       // );
-      llmInfo('Calling OpenAI...' + completionType);
+      llmInfo('Calling OpenAI [mode:' + completionType + ']');
 
       if (completionType === completionTypes.completion) {
         completion = await openai.completions.create(options);
       } else {
         completion = await openai.responses.create(options);
       }
-      console.log('🛜 CALLING OpenAI');
-      // console.log('🛜 OpenAI response:', completion);
-      // console.log('🛜 OpenAI response.output:', completion.output);
+      // console.log('OpenAI response:', completion);
+      // console.log('OpenAI response.output:', completion.output);
 
       try {
         if (completionType === completionTypes.completion) {
@@ -122,7 +130,7 @@ export async function callModel({
       }
       // parseChatCompletion(a);
       // console.log(
-      //   '🛜 OpenAI completion message:',
+      //   'OpenAI completion message:',
       //   completion.choices[0].message,
       // );
       // debugOAI('completion', completion);
@@ -138,7 +146,7 @@ export async function callModel({
 
       if (hasToolCalls) {
         if (!tools || !tools.length) throw new Error('No tools found');
-        // console.log('🛜 hasToolCalls...', completion);
+        // console.log('hasToolCalls...', completion);
 
         toolsCalled = true;
         let toolCalls;
@@ -147,11 +155,11 @@ export async function callModel({
         } else {
           toolCalls = [{ function: choice }];
         }
-        console.log('🛜 toolCall', toolCalls[0]);
+        llmInfo('hasToolCalls', toolCalls[0]);
         for (let toolCall of toolCalls) {
           // Check if it's calling a agent as a tool (wrong way)
-          console.log(
-            '🛜 toolCall:',
+          llmInfo(
+            'toolCall:',
             toolCall!.function.name,
             toolCall!.function.arguments,
           );
@@ -188,7 +196,7 @@ export async function callModel({
               messagesValue.push(rest);
             }
           } catch (error: any) {
-            console.log(
+            logError(
               '🚨 Error calling tool:',
               toolCall!.function.name,
               'args: ',
@@ -223,8 +231,11 @@ export async function callModel({
 
     return { result, messages: messagesValue };
   } catch (e) {
-    console.log('🚨 Error calling OpenAI:');
+    logError('callModel error', e);
+    // console.log('🚨 Error calling OpenAI:');
     console.error(e);
+    console.log('Options:');
+    console.dir(options, { depth: null });
     throw e;
   }
 }

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "DEBUG_DEPTH=null  node --no-warnings --experimental-transform-types --experimental-strip-types src/index.ts $@",
+    "start": "DEBUG_DEPTH=null node --no-warnings --experimental-transform-types --experimental-strip-types --env-file=.env src/index.ts $@",
     "debugOptions": "DEBUG=taw:* ",
     "test": "DEBUG_DEPTH=null DEBUG=taw:* vitest run"
   },

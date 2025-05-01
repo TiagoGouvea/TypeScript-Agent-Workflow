@@ -1,4 +1,4 @@
-import { error } from '../utils/log.ts';
+import { logError } from '../utils/log.ts';
 import {
   type BaseNodeParams,
   WorkflowNode,
@@ -24,7 +24,7 @@ export class CodeNode extends WorkflowNode {
       // console.log('params1', params);
       return await this.run(params);
     } catch (err: any) {
-      error('Error calling the model:', err.message || err);
+      logError('Error calling the model:', err.message || err);
       console.error(err);
       process.exit(1);
     }
