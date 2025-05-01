@@ -12,7 +12,7 @@ export function critical(message: string, ...args: any[]) {
   console.error(chalk.bgRed(' 🔥 CRITICAL '), chalk.red(message), ...args);
 }
 
-export function error(message: string, ...args: any[]) {
+export function logError(message: string, ...args: any[]) {
   console.error(chalk.bgRed(' ERROR '), chalk.red(message), ...args);
 }
 
@@ -25,7 +25,11 @@ export function systemInfo(message: string, ...args: any[]) {
 }
 
 export function llmInfo(message: string, ...args: any[]) {
-  console.log(chalk.bgWhite(' LLM '), chalk.white(message), ...args);
+  console.log(chalk.bgGray(' LLM '), chalk.gray(message), ...args);
+}
+
+export function logDebug(message: string, ...args: any[]) {
+  console.log(chalk.bgGray(' DEBUG '), chalk.gray(message), ...args);
 }
 
 export function systemAsks(prompt: string) {

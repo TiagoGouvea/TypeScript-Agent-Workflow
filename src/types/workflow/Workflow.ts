@@ -1,4 +1,4 @@
-import { agentSays, workflowInfo } from '../../utils/log.ts';
+import { agentSays, logDebug, workflowInfo } from '../../utils/log.ts';
 import {
   type RawData,
   type StructuredData,
@@ -33,7 +33,6 @@ export class Workflow {
 
     for (const stepKey of stepKeys) {
       const stepNode: WorkflowNode = this.steps[stepKey];
-      // console.log(step);
       workflowInfo(
         'Step ' +
           stepsCount++ +
@@ -53,19 +52,19 @@ export class Workflow {
       stepInput = await getStepInput(this, stepNode, lastStepResult);
       // console.log('> stepInput', stepInput);
 
+      if (stepNode.debug) logDebug('stepInput', stepInput);
+
       //////////////////////////////// Execute step  /////////////////////////////
 
       // Verificar o tipo de step e executar a lógica apropriada
       stepResult = await stepNode.execute({ step: stepNode, stepInput });
-      // if (isCodeStep(step)) {
-      //   stepResult = await executeCodeStep({ step, stepInput });
-      // } else if (isAgentStep(step)) {
-      //   stepResult = await executeAgentStep({ step, stepInput });
-      // } else {
-      //   throw new Error('Unknown step type: ' + JSON.stringify(step));
-      // }
-      /// if..... ?
+
+      if (stepNode.debug) logDebug('stepResult A', stepResult);
+
       stepResult = rawDataObjectToStructuredData(stepResult);
+
+      if (stepNode.debug) logDebug('stepResult B', stepResult);
+
       // console.log('> stepResult', stepResult);
       this.lastStepResult = stepResult;
 
@@ -134,6 +133,16 @@ export class Workflow {
         'inputSchema is required when step.inputSource is not InputSource.Global',
       );
     }
+
+    if (
+      step.outputSchema &&
+      (!step.outputSchema.shape || typeof step.outputSchema.shape !== 'object')
+    ) {
+      throw new Error(
+        'outputSchema must start with z.object() to be compatible with OpenAI function calling format',
+      );
+    }
+
     if (step.inputSource == InputSource.UserInput) {
       // Schema must have description on all fields
     }

@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { Workflow } from '../src/types/workflow/Workflow';
-import { InputSource } from '../src/types/workflow/Input';
 import { CodeNode, type CodeNodeRunParams } from '../src/nodes/Code';
+import { InputSource } from '../src/types/workflow/Input';
+import appState from '../src/AppState';
 
-describe('Input Sources', () => {
-  // Create a simple code step
+describe('User Input Sources', () => {
   const firstStep = new CodeNode({
     name: 'Should multiply two numbers',
     inputSource: InputSource.DataObject,
@@ -31,65 +31,74 @@ describe('Input Sources', () => {
     },
   });
 
-  it('[Step - InputSource.DataObject] Should use a object as input', async () => {
-    const testWorkflow = new Workflow({ firstStep });
-    await testWorkflow.execute();
-    const result = testWorkflow.getResult('rawData');
-    // console.log('Workflow result:', result);
-    expect(result.calculation).toBe(6);
-  });
+  it('[Step - InputSource.UserInput] Should ask for user input', async () => {
+    // Shame of me workaround
+    appState.set('CUR_TEST', 'UserInput');
 
-  it('[Step - InputSource.LastStep] Should receive the output of the last step', async () => {
     // Create a simple code step
-    const secondStep = new CodeNode({
+    const userInputStep = new CodeNode({
       name: 'Should multiply the result by 2',
       inputSchema: z.object({
         calculation: z.number(),
-      }), // use the first step's output schema
-      inputSource: InputSource.LastStep,
+      }),
+      inputSource: InputSource.UserInput,
       outputSchema: z.object({
         finalNumber: z.number(),
       }),
       run: async (params: CodeNodeRunParams): Promise<any> => {
         const { stepInput } = params;
-        if (!stepInput?.calculation.value)
+        if (!stepInput?.firstNumber.value || !stepInput?.secondNumber.value)
           throw new Error('stepInput is undefined');
-        // console.log('secondStep input', stepInput);
-        return { finalNumber: stepInput.calculation.value * 2 } as any;
+        // console.log('run stepInput', stepInput);
+        return {
+          finalNumber:
+            stepInput.firstNumber.value * stepInput.secondNumber.value,
+        } as any;
       },
     });
-    const testWorkflow = new Workflow({ firstStep, secondStep });
+    const testWorkflow = new Workflow({
+      userInputStep,
+    });
     await testWorkflow.execute();
     const result = testWorkflow.getResult('rawData');
     // console.log('Workflow result:', result);
-    expect(result.finalNumber).toBe(12);
+    expect(result.finalNumber).toBe(6);
   });
 
-  it('[Step - InputSource.Global] Should receive the global state as input', async () => {
+  it('[Step - InputSource.LastStepAndUserInput] Should receive data and ask for user input', async () => {
+    // Shame of me workaround
+    appState.set('CUR_TEST', 'LastStepAndUserInput');
+
     // Create a simple code step
-    const globalInputStep = new CodeNode({
-      name: 'Should multiply the result by 2',
-      inputSource: InputSource.Global,
+    const userInputStep = new CodeNode({
+      name: 'Should multiply {inputDataObject.firstNumber} by Y',
+      inputSource: InputSource.LastStepAndUserInput,
+      inputSchema: z.object({
+        calculation: z.number(),
+        secondNumber: z.number(),
+      }),
       outputSchema: z.object({
         finalNumber: z.number(),
       }),
       run: async (params: CodeNodeRunParams): Promise<any> => {
         const { stepInput } = params;
-        if (!stepInput?.firstStep?.output?.calculation?.value)
+        // console.log('params', params);
+        if (!stepInput?.calculation.value || !stepInput?.secondNumber.value)
           throw new Error('stepInput is undefined');
-        // console.log('globalInputStep input', stepInput);
+        // console.log('run stepInput', stepInput);
         return {
-          finalNumber: stepInput.firstStep.output?.calculation.value * 2,
+          finalNumber:
+            stepInput.calculation.value * stepInput.secondNumber.value,
         } as any;
       },
     });
     const testWorkflow = new Workflow({
       firstStep,
-      globalInputStep,
+      userInputStep,
     });
     await testWorkflow.execute();
     const result = testWorkflow.getResult('rawData');
     // console.log('Workflow result:', result);
-    expect(result.finalNumber).toBe(12);
+    expect(result.finalNumber).toBe(18);
   });
 });

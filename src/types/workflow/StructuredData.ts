@@ -23,7 +23,7 @@ export type RawData = Record<string, any>;
 export function mergeTwoStructuredData(
   inputDataOne: StructuredData<any>,
   inputDataTwo: StructuredData<any>,
-) {
+): StructuredData<any> {
   logStep(
     'mergeTwoStepInputData inputDataOne',
     inputDataOne,
@@ -66,6 +66,16 @@ export function inputSchemaToStructuredData(inputSchema: ZodType<any>) {
 export function rawDataObjectToStructuredData(rawDataObject: RawData) {
   // logStep('inputDataObjectToInputData rawDataObject', rawDataObject);
   const stepInputData: StructuredData<any> = {};
+
+  // Tratamento especial para strings - se for apenas uma string, tratá-la como um valor único
+  if (typeof rawDataObject === 'string') {
+    stepInputData['content'] = {
+      value: rawDataObject,
+    };
+    return stepInputData;
+  }
+
+  // Tratamento para outros tipos
   for (const key of Object.keys(rawDataObject)) {
     logStep('key', key, rawDataObject[key]);
     stepInputData[key] = {
@@ -79,6 +89,12 @@ export function rawDataObjectToStructuredData(rawDataObject: RawData) {
 // StructuredDataToRawData
 export function structuredDataToRawData(structuredData: StructuredData<any>) {
   const rawData: RawData = {};
+
+  // Se for um objeto com uma única chave 'content', retornar diretamente o valor
+  if (Object.keys(structuredData).length === 1 && 'content' in structuredData) {
+    return structuredData.content.value;
+  }
+
   for (const key in structuredData) {
     rawData[key] = structuredData[key].value;
   }

@@ -11,11 +11,13 @@ export async function callModel({
   messages,
   responseFormat,
   tools,
+  debug,
 }: {
   systemPrompt?: string;
   messages: any[];
   responseFormat?: any;
   tools?: NodeTool[];
+  debug?: boolean;
 }) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
 
@@ -73,8 +75,6 @@ export async function callModel({
       tools: toolsValue,
     };
 
-    // console.log('options', options);
-
     if (completionType === completionTypes.completion) {
       options.messages = messagesValue;
       options.response_format = zodResponseFormat(
@@ -95,6 +95,8 @@ export async function callModel({
     console.error(error);
     throw error;
   }
+
+  // console.log('options', options);
 
   try {
     // console.log('messages', messages);
@@ -155,14 +157,15 @@ export async function callModel({
         } else {
           toolCalls = [{ function: choice }];
         }
-        llmInfo('hasToolCalls', toolCalls[0]);
+        if (debug) llmInfo('hasToolCalls', toolCalls);
         for (let toolCall of toolCalls) {
           // Check if it's calling a agent as a tool (wrong way)
-          llmInfo(
-            'toolCall:',
-            toolCall!.function.name,
-            toolCall!.function.arguments,
-          );
+          if (debug)
+            llmInfo(
+              'toolCall:',
+              toolCall!.function.name,
+              toolCall!.function.arguments,
+            );
           // find the tool
           const callToolNode = tools.find(
             (t) => t.toolDeclaration.name === toolCall!.function.name,
@@ -186,7 +189,7 @@ export async function callModel({
               };
               messagesValue.push({ ...rest, functionCall: toolCall });
             } else {
-              messagesValue.push(completion.output[0]);
+              messagesValue.push(choice);
               const rest = {
                 type: 'function_call_output',
                 call_id: toolCall.function.call_id,
@@ -234,7 +237,7 @@ export async function callModel({
     logError('callModel error', e);
     // console.log('🚨 Error calling OpenAI:');
     console.error(e);
-    console.log('Options:');
+    logError('callModel options:');
     console.dir(options, { depth: null });
     throw e;
   }

@@ -3,6 +3,7 @@ import { InputSource } from '../types/workflow/Input.ts';
 import {
   agentAsks,
   agentSays,
+  logDebug,
   logError,
   logStep,
   workflowInfo,
@@ -67,9 +68,12 @@ export class AgentNode extends WorkflowNode {
         });
       }
 
-      const allowUserInteraction = step.inputSource == InputSource.UserInput;
+      const allowUserInteraction = [
+        InputSource.LastStepAndUserInput,
+        InputSource.UserInput,
+      ].includes(step.inputSource);
 
-      if (step.inputSource == InputSource.UserInput && allowUserInteraction) {
+      if (allowUserInteraction) {
         systemPrompt = `
           <base_introduction>
             Você faz parte de um workflow de várias etapas, executando uma etapa apenas.
@@ -116,7 +120,7 @@ export class AgentNode extends WorkflowNode {
             Você faz parte de um workflow de várias etapas, executando uma etapa apenas.
           </base_introduction>
           <workflow>
-            Etapa atual:${step.name}
+            Etapa atual:${step.name || step.introductionText}
             <retorno>
               Retorne "gotToNextStep:true" quando o objetivo for alcançado e o workflow deva ir para a etapa seguinte (não descrita aqui)
             </retorno>
@@ -155,6 +159,7 @@ export class AgentNode extends WorkflowNode {
             messages,
             responseFormat: z.object({ agentResponse: responseSchema }),
             tools: this.tools,
+            debug: step.debug,
           });
           // Validate result with schema
           // console.log('llmResult', llmResult);
@@ -177,7 +182,9 @@ export class AgentNode extends WorkflowNode {
           shouldContinueInThisStep =
             !!(agentResponse.humanQuestion && allowUserInteraction) ||
             !agentResponse.gotToNextStep;
-          console.log('shouldContinueInThisStep?', shouldContinueInThisStep);
+
+          if (step.debug)
+            logDebug('shouldContinueInThisStep', shouldContinueInThisStep);
           // if (!shouldContinueInThisStep)
           //   console.log('agentResponse', agentResponse);
         } catch (err: any) {

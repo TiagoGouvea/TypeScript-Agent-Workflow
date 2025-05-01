@@ -12,6 +12,7 @@ export interface BaseNodeParams {
   outputSchema: ZodType;
   introductionText?: string;
   allowHumanResponse?: boolean;
+  debug?: boolean;
 }
 
 export class WorkflowNode {
@@ -23,6 +24,7 @@ export class WorkflowNode {
   public outputSchema!: ZodType;
   public introductionText?: string;
   public allowHumanResponse?: boolean = false;
+  public debug?: boolean = false;
 
   constructor(params: any) {
     Object.assign(this, params);

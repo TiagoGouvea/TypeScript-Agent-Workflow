@@ -7,6 +7,7 @@ import {
 import { agentAsks } from '../../utils/log.ts';
 import type { Workflow } from './Workflow.ts';
 import type { WorkflowNode } from './WorkflowNode.ts';
+import appState from '../../AppState.ts';
 
 /**
  * Enum para definir a fonte de entrada de um passo
@@ -14,16 +15,17 @@ import type { WorkflowNode } from './WorkflowNode.ts';
 export enum InputSource {
   DataObject = 'DATA_OBJECT',
   LastStep = 'LAST_STEP',
+  LastStepAndUserInput = 'LAST_STEP_USER_INPUT',
   UserInput = 'USER_INPUT',
   Global = 'GLOBAL',
   Mixed = 'MIXED',
 }
 
-export const getStepInput = (
+export const getStepInput = async (
   workflow: Workflow,
   step: WorkflowNode,
   lastStepOutput: StructuredData<any>,
-) => {
+): Promise<StructuredData<any>> => {
   // @todo
   // Mixed input
   // [ ] Handle recursive object on input data
@@ -52,6 +54,22 @@ export const getStepInput = (
     return mergeTwoStructuredData(draftStructuredData, lastStepOutput);
   } else if (step.inputSource == InputSource.UserInput) {
     return getUserInput(draftStructuredData);
+  } else if (step.inputSource == InputSource.LastStepAndUserInput) {
+    const daftData = mergeTwoStructuredData(
+      draftStructuredData,
+      lastStepOutput,
+    );
+    const missingValues = Object.keys(daftData).reduce((acc, key) => {
+      if (!daftData[key].value) {
+        acc[key] = { description: daftData[key].description, value: undefined };
+      }
+      return acc;
+    }, {});
+    if (Object.keys(missingValues).length > 0) {
+      const userInput = await getUserInput(missingValues);
+      return mergeTwoStructuredData(daftData, userInput);
+    }
+    return daftData;
   } else throw new Error('input not expected: ', step.inputSource);
   // // Note: InputSource.Mixed would require more complex logic to combine sources,
   // // potentially based on specific configurations per field.
@@ -62,8 +80,14 @@ export const getStepInput = (
 async function getUserInput(
   draftStructuredData: StructuredData<any>,
 ): Promise<StructuredData<any>> {
+  // Shame of me workaround
   if (process.env.NODE_ENV === 'test') {
-    return { firstNumber: { value: 2 }, secondNumber: { value: 3 } };
+    const curTest = appState.get('CUR_TEST');
+    if (curTest == 'UserInput')
+      return { firstNumber: { value: 2 }, secondNumber: { value: 3 } };
+    else if (curTest == 'LastStepAndUserInput')
+      return { secondNumber: { value: 3 } };
+    else throw new Error('unknown curTest');
   }
   // console.log('Requesting input from user...');
   const result = structuredClone(draftStructuredData);
