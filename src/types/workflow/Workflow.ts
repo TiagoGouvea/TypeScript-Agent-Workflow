@@ -49,7 +49,12 @@ export class Workflow {
       if (stepNode.introductionText) agentSays(stepNode.introductionText);
 
       /////////////////////////////////////// Input  /////////////////////////////
-      stepInput = await getStepInput(this, stepNode, lastStepResult);
+      stepInput = await getStepInput(
+        this,
+        stepNode,
+        lastStepResult,
+        stepNode.inputObject,
+      );
       // console.log('> stepInput', stepInput);
 
       if (stepNode.debug) logDebug('stepInput', stepInput);
@@ -119,7 +124,7 @@ export class Workflow {
     // first step cannot use lastResult
     // Error: inputSchema is required when step.inputSource is not InputSource.Global
 
-    if (step.inputSource === InputSource.DataObject && !step.inputDataObject) {
+    if (step.inputSource === InputSource.DataObject && !step.inputObject) {
       throw new Error(
         'inputDataObject is required when step.inputSource is InputSource.DataObject',
       );

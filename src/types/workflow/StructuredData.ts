@@ -17,7 +17,7 @@ export type StructuredData<T extends Record<string, any>> = {
   [K in keyof T]: StructuredDataField<T[K]>;
 };
 
-// Formato livre (Objeto simples chave-valor)
+// Free format object (any)
 export type RawData = Record<string, any>;
 
 export function mergeTwoStructuredData(

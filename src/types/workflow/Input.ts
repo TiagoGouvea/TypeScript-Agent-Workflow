@@ -16,6 +16,7 @@ export enum InputSource {
   DataObject = 'DATA_OBJECT',
   LastStep = 'LAST_STEP',
   LastStepAndUserInput = 'LAST_STEP_USER_INPUT',
+  DataObjectAndUserInput = 'DATA_OBJECT_USER_INPUT',
   UserInput = 'USER_INPUT',
   Global = 'GLOBAL',
   Mixed = 'MIXED',
@@ -24,7 +25,8 @@ export enum InputSource {
 export const getStepInput = async (
   workflow: Workflow,
   step: WorkflowNode,
-  lastStepOutput: StructuredData<any>,
+  lastStepOutput?: StructuredData<any>,
+  inputObject?: Object,
 ): Promise<StructuredData<any>> => {
   // @todo
   // Mixed input
@@ -47,8 +49,8 @@ export const getStepInput = async (
   // console.log('> step.inputSource', step.inputSource);
 
   // Check if inputData is already provided in the step definition
-  if (step.inputSource == InputSource.DataObject && step.inputDataObject) {
-    const dataObject = rawDataObjectToStructuredData(step.inputDataObject);
+  if (step.inputSource == InputSource.DataObject && step.inputObject) {
+    const dataObject = rawDataObjectToStructuredData(step.inputObject);
     return mergeTwoStructuredData(draftStructuredData, dataObject);
   } else if (step.inputSource == InputSource.LastStep && lastStepOutput) {
     return mergeTwoStructuredData(draftStructuredData, lastStepOutput);
@@ -59,6 +61,23 @@ export const getStepInput = async (
       draftStructuredData,
       lastStepOutput,
     );
+    const missingValues = Object.keys(daftData).reduce((acc, key) => {
+      if (!daftData[key].value) {
+        acc[key] = { description: daftData[key].description, value: undefined };
+      }
+      return acc;
+    }, {});
+    if (Object.keys(missingValues).length > 0) {
+      const userInput = await getUserInput(missingValues);
+      return mergeTwoStructuredData(daftData, userInput);
+    }
+    return daftData;
+  } else if (step.inputSource == InputSource.DataObjectAndUserInput) {
+    // console.log('inputObject', inputObject);
+    const inputData = rawDataObjectToStructuredData(inputObject);
+    // console.log('inputData', inputData);
+    const daftData = mergeTwoStructuredData(draftStructuredData, inputData);
+    // console.log('daftData', daftData);
     const missingValues = Object.keys(daftData).reduce((acc, key) => {
       if (!daftData[key].value) {
         acc[key] = { description: daftData[key].description, value: undefined };

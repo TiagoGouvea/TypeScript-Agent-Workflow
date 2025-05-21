@@ -1,6 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
-import type { NodeTool } from './webScrap.ts';
+import type { NodeTool } from '../types/workflow/Tool';
 
 export const webSearch: NodeTool = {
   toolDeclaration: {
@@ -98,8 +98,15 @@ export const webSearch: NodeTool = {
       // console.log('response.data', response.data);
       return response.data[type] || [];
     } catch (error: any) {
-      console.error('Error during Serper search:', error.message);
-      console.error(error);
+      const code = error.status || error.response.status || error.code;
+      const message = error.response.message || error.response.data.message;
+      console.error(
+        'Error during Serper search - code:' + code + ' - message:' + message,
+        error.message,
+      );
+      if (!code || !message) {
+        console.error(error);
+      }
       return {
         error: 'Failed to execute Serper search',
         details: error.message,

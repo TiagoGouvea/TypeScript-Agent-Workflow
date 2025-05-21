@@ -1,20 +1,15 @@
-import type { Tool } from 'openai/resources/responses/responses';
 import chalk from 'chalk';
 import { CrawlingAPI } from 'crawlbase';
 import OpenAI from 'openai';
 import * as cheerio from 'cheerio';
+import type { NodeTool } from '../types/workflow/Tool';
 
 if (!process.env.CRAWLBASE_API_KEY)
   throw new Error(
     'You must set the CRAWLBASE_API_KEY environment variable to use webScraper.',
   );
 
-export type NodeTool = {
-  toolDeclaration: Tool;
-  run: any;
-};
-
-export const webScraper: NodeTool = {
+export const crawlbase: NodeTool = {
   toolDeclaration: {
     type: 'function',
     name: 'webScraper',
@@ -26,18 +21,27 @@ export const webScraper: NodeTool = {
           type: 'string',
           description: 'URL to scrapping from',
         },
+        returnMode: {
+          type: 'string',
+          enum: ['lookFor', 'fullHtmlContent'],
+          description: `
+           "lookFor" - will process the HTML with LLM to return just the "lookFor" information (other than the complete HTML) - recommended when you are looking for some specify information on the url.
+           "fullHtmlContent" - will return the whole HTML - recommended when you need the complete contents
+          `,
+          default: 'lookFor',
+        },
         lookFor: {
           type: 'string',
           description:
-            'Sentence with the information that the model should look for',
+            'A small prompt with the information that the model should look for',
         },
       },
       additionalProperties: false,
-      required: ['url', 'lookFor'],
+      required: ['url', 'lookFor', 'returnMode'],
     },
   },
   run: async (params) => {
-    const { url, lookFor } = params;
+    const { url, lookFor, mode } = params;
     // console.log('webScraper params', params);
 
     console.log(
@@ -46,7 +50,10 @@ export const webScraper: NodeTool = {
     );
 
     try {
-      const api = new CrawlingAPI({ token: process.env.CRAWLBASE_API_KEY! });
+      const api = new CrawlingAPI({
+        token: process.env.CRAWLBASE_API_KEY!,
+        timeout: 10000,
+      });
       // Return raw scraped content
       // Faz uma requisição GET para a URL fornecida
       const response = await api.get(url, { autoparse: true });
@@ -61,11 +68,11 @@ export const webScraper: NodeTool = {
 
         // console.log('Conteúdo da página:', content.length);
 
-        console.log(
-          chalk.cyan(
-            `🌐 Extraindo informação útil da página, procurando por ${lookFor}`,
-          ),
-        );
+        if (mode === 'fullHtmlContent') return content;
+
+        return content;
+
+        console.log(chalk.cyan(`🌐 Extracting information`));
 
         console.log('--------------------------------------');
         console.log('content', content);
@@ -92,10 +99,7 @@ export const webScraper: NodeTool = {
         };
       }
     } catch (error: any) {
-      console.error(
-        'Error during web scraping or embedding processing:',
-        error,
-      );
+      console.error('Error during web scraping:', error);
       console.error(error);
       return {
         error: 'Failed to execute web scraping or embeddings processing',
@@ -131,12 +135,13 @@ export async function simplifyContent(
     - Publicidade ou elementos irrelevantes
     
     Busque por:
-    - Conteúdo relacionado ao tópico "${lookFor}"
+    ${lookFor}
     
     Retorne:
+    - Não retorne nenhuma informação que não esteja explicitamente no HTML fornecido
     - O texto no HTML que está diretamente relacionado ao que foi solicitado
     - Links relevantes para se obter mais informações em uma próxima interação
-    - Não retorne nenhuma informação que não esteja explicitamente no HTML fornecido
+    
     
     # Aqui está o HTML:
     ${htmlBody}`;

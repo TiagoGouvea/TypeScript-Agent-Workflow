@@ -14,7 +14,7 @@ import {
   WorkflowNode,
 } from '../types/workflow/WorkflowNode.ts';
 import type { Tool } from 'openai/resources/responses/responses';
-import type { NodeTool } from '../_workflows/dailyNews/webSearch.ts';
+import type { NodeTool } from '../tools/webSearch.ts';
 
 export interface AgentNodeParams extends BaseNodeParams {
   systemPrompt?: string;
@@ -43,7 +43,6 @@ export class AgentNode extends WorkflowNode {
       // Deve retornar o output final já, ou o output intermediário?
       // Se não tiver que interagir nem falar nada, já dá pra retonar o final
 
-      let shouldContinueInThisStep = true;
       // @todo mover pra metodo
       // Explicar os caminhos que pode seguir o modelo
       // Juntar o input no prompt, como user?
@@ -130,12 +129,16 @@ export class AgentNode extends WorkflowNode {
           </step_instructions>`;
       }
 
+      if (this.debug) console.log('systemPrompt', systemPrompt);
+
       // lastResponseSchema = responseSchema;
 
       let llmResult: lmresult;
       let messages = [
         { role: 'user', content: 'inputData: ' + JSON.stringify(stepInput) },
       ];
+      let shouldContinueInThisStep = true;
+      let allMessages = [];
       while (shouldContinueInThisStep) {
         // Rodar system prompt
         try {
@@ -162,9 +165,10 @@ export class AgentNode extends WorkflowNode {
             debug: step.debug,
           });
           // Validate result with schema
-          // console.log('llmResult', llmResult);
+          if (this.debug) console.log('llmResult', llmResult);
           // console.log('messages.length:', messages.length);
           const agentResponse = llmResult.result.agentResponse;
+          allMessages.push(...llmResult.messages);
 
           messages.push({
             role: 'assistant',
@@ -202,8 +206,8 @@ export class AgentNode extends WorkflowNode {
       //   messages,
       //   responseSchema,
       // });
-      workflowInfo('Formating step results');
-      const agentResult = await formatStepResult(step, llmResult);
+      agentSays(`I'm formatting the final step results`);
+      const agentResult = await formatStepResult(step, allMessages);
 
       return agentResult;
     } catch (err: any) {
@@ -213,7 +217,7 @@ export class AgentNode extends WorkflowNode {
   }
 }
 
-async function formatStepResult(step: any, llmResult: lmresult): Promise<any> {
+async function formatStepResult(step: any, allMessages: any[]): Promise<any> {
   // @todo quando tenho que rodar outra vez pra formatar o retorno?
   // if (
   //   step.outputSchema &&
@@ -224,18 +228,21 @@ async function formatStepResult(step: any, llmResult: lmresult): Promise<any> {
   // console.log('messages', messages);
   // Tenho que retornar o output no formato definido....
   // Quando ele mandar terminar, rodar mais uma vez com o outputSchema definido de saída
+
+  // console.log('>>>>>>>>>>>>>allMessages');
+  // console.dir(allMessages, { depth: null });
+
   const messages = [
-    ...llmResult.messages,
+    ...allMessages,
     {
       role: 'system',
       content:
         'Convert the above output to the following schema: ' +
         JSON.stringify(step.outputSchema),
     },
-  ].filter((msg) =>
-    ['user', 'system', 'developer', 'assistant'].includes(msg.role),
-  );
-  // console.log('messagess', messages);
+  ];
+  // console.log('>>>>>>>>>>>>>messages');
+  // console.log('messages', messages);
   const lastLlmResult = await callModel({
     systemPrompt: step.systemPrompt,
     messages,
