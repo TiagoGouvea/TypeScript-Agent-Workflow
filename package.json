@@ -6,7 +6,9 @@
   "scripts": {
     "start": "DEBUG_DEPTH=null node --no-warnings --experimental-transform-types --experimental-strip-types --env-file=.env src/index.ts $@",
     "debugOptions": "DEBUG=taw:* ",
-    "test": "DEBUG_DEPTH=null DEBUG=taw:* vitest run"
+    "test": "DEBUG_DEPTH=null DEBUG=taw:* vitest run",
+    "test:ui": "DEBUG_DEPTH=null DEBUG=taw:* vitest --ui --no-coverage --reporter=verbose",
+    "test:watch": "DEBUG_DEPTH=null DEBUG=taw:* vitest"
   },
   "repository": {
     "type": "git",
@@ -30,6 +32,7 @@
   "devDependencies": {
     "@types/debug": "^4.1.12",
     "@types/node": "^22.14.1",
+    "@vitest/ui": "3.1.1",
     "eslint": "^9.24.0",
     "prettier": "^3.5.3",
     "vitest": "^3.1.1"

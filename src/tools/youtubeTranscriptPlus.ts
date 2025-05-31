@@ -1,36 +1,24 @@
 import chalk from 'chalk';
 import { fetchTranscript } from 'youtube-transcript-plus';
-import type { NodeTool } from '../types/workflow/Tool';
+import { z } from 'zod';
+import { tool } from '../types/workflow/Tool.ts';
 
-export const youtubeTranscriptPlus: NodeTool = {
-  toolDeclaration: {
-    type: 'function',
-    name: 'youtubeTranscriptPlus',
-    strict: true,
-    parameters: {
-      type: 'object',
-      properties: {
-        videoUrl: {
-          type: 'string',
-          description: 'Full YouTube video URL',
-        },
-        language: {
-          type: 'string',
-          description: 'Language code for transcript (e.g., "en", "pt", "es")',
-          default: 'en',
-        },
-        format: {
-          type: 'string',
-          enum: ['text', 'json', 'srt'],
-          description:
-            'Format to return the transcript in (text returns plain text, json returns timing information, srt returns subtitle format)',
-          default: 'text',
-        },
-      },
-      additionalProperties: false,
-      required: ['videoUrl', 'language', 'format'],
-    },
-  },
+export const youtubeTranscriptPlus = tool({
+  name: 'youtubeTranscriptPlus',
+  description: 'Get YouTube video transcripts in various formats',
+  params: z.object({
+    videoUrl: z.string().describe('Full YouTube video URL'),
+    language: z
+      .string()
+      .default('en')
+      .describe('Language code for transcript (e.g., "en", "pt", "es")'),
+    format: z
+      .enum(['text', 'json', 'srt'])
+      .default('text')
+      .describe(
+        'Format to return the transcript in (text returns plain text, json returns timing information, srt returns subtitle format)',
+      ),
+  }),
   run: async (params) => {
     const { videoUrl, language = 'en', format = 'text' } = params;
 
@@ -108,7 +96,7 @@ export const youtubeTranscriptPlus: NodeTool = {
       };
     }
   },
-};
+});
 
 /**
  * Extracts YouTube video ID from a URL

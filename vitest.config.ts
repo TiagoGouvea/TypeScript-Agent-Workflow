@@ -13,5 +13,8 @@ export default defineConfig(({ mode }) => ({
     reporters: ['verbose'],
     testTimeout: 120000,
     env: loadEnv(mode, process.cwd(), ''),
+    ui: {
+      open: false
+    },
   },
 }));

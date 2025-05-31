@@ -12,7 +12,7 @@ describe('youtubeTranscriptPlus', () => {
     // console.log(params);
 
     const result = await youtubeTranscriptPlus.run(params);
-    // console.log(result);
+    console.log(result);
 
     // Verify the result is successful
     expect(result.success).toBe(true);

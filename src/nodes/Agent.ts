@@ -19,6 +19,7 @@ import type { NodeTool } from '../tools/webSearch.ts';
 export interface AgentNodeParams extends BaseNodeParams {
   systemPrompt?: string;
   tools?: NodeTool[];
+  providerModel?: string;
 }
 
 interface lmresult {
@@ -29,11 +30,13 @@ interface lmresult {
 export class AgentNode extends WorkflowNode {
   public systemPrompt?: string;
   public tools?: NodeTool[];
+  public providerModel?: string;
 
   constructor(params: AgentNodeParams) {
     super(params);
     this.systemPrompt = params.systemPrompt;
     this.tools = params.tools;
+    this.providerModel = params.providerModel;
   }
 
   async execute({ step, stepInput }: { step: any; stepInput: any }) {
@@ -163,6 +166,7 @@ export class AgentNode extends WorkflowNode {
             responseFormat: z.object({ agentResponse: responseSchema }),
             tools: this.tools,
             debug: step.debug,
+            providerModel: this.providerModel,
           });
           // Validate result with schema
           if (this.debug) console.log('llmResult', llmResult);
@@ -247,6 +251,7 @@ async function formatStepResult(step: any, allMessages: any[]): Promise<any> {
     systemPrompt: step.systemPrompt,
     messages,
     responseFormat: step.outputSchema ? step.outputSchema : undefined,
+    providerModel: step.providerModel,
   });
   return lastLlmResult.result;
 }

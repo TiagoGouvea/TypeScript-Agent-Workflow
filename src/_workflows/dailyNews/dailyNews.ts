@@ -103,7 +103,9 @@ const writeNews = new AgentNode({
   systemPrompt: `
   You must write a newsletter about the previous subject, ranking the most relevant news first.
   
-  Return the markdown like
+  Return at least 10 news.
+
+  Return the markdown following this template.
   
   # News Title
   [link]

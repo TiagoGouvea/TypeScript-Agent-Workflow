@@ -3,45 +3,32 @@ import { CrawlingAPI } from 'crawlbase';
 import OpenAI from 'openai';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
-import type { NodeTool } from '../types/workflow/Tool';
+import { z } from 'zod';
+import { tool } from '../types/workflow/Tool.ts';
 
 if (!process.env.SCRAPINGBEE_API_KEY)
   throw new Error(
     'You must set the SCRAPINGBEE_API_KEY environment variable to use scrapingBee.',
   );
 
-export const scrapingBee: NodeTool = {
-  toolDeclaration: {
-    type: 'function',
-    name: 'webScraper',
-    strict: true,
-    parameters: {
-      type: 'object',
-      properties: {
-        url: {
-          type: 'string',
-          description: 'URL to scrapping from',
-        },
-        returnMode: {
-          type: 'string',
-          enum: ['lookFor', 'fullHtmlContent', 'justText'],
-          description: `
-           "lookFor" - will process the HTML with LLM to return just the "lookFor" information (other than the complete HTML) - recommended when you are looking for some specify information on the url.
-           "fullHtmlContent" - will return the whole HTML - recommended when you need the complete contents and links
-           "justText" - will return just the text from the HTML (without any HTML tags)
-          `,
-          default: 'justText',
-        },
-        lookFor: {
-          type: 'string',
-          description:
-            'A small prompt with the information that the model should look for',
-        },
-      },
-      additionalProperties: false,
-      required: ['url', 'lookFor', 'returnMode'],
-    },
-  },
+export const scrapingBee = tool({
+  name: 'webScraper',
+  description: 'Scrape web content from URLs with various return formats',
+  params: z.object({
+    url: z.string().describe('URL to scrapping from'),
+    returnMode: z
+      .enum(['lookFor', 'fullHtmlContent', 'justText'])
+      .describe(
+        '"lookFor" - will process the HTML with LLM to return just the "lookFor" information (other than the complete HTML) - recommended when you are looking for some specify information on the url.\n' +
+          '"fullHtmlContent" - will return the whole HTML - recommended when you need the complete contents and links\n' +
+          '"justText" - will return just the text from the HTML (without any HTML tags)',
+      ),
+    lookFor: z
+      .string()
+      .describe(
+        'A small prompt with the information that the model should look for',
+      ),
+  }),
   run: async (params) => {
     const { url, lookFor, returnMode } = params;
     // console.log('webScraper params', params);
@@ -121,7 +108,7 @@ export const scrapingBee: NodeTool = {
       };
     }
   },
-};
+});
 
 function stripHtml(html: string) {
   const $ = cheerio.load(html);

@@ -1,51 +1,34 @@
 import axios from 'axios';
 import chalk from 'chalk';
-import type { NodeTool } from '../types/workflow/Tool';
+import { z } from 'zod';
+import { tool } from '../types/workflow/Tool.ts';
 
-export const webSearch: NodeTool = {
-  toolDeclaration: {
-    type: 'function',
-    name: 'webSearch',
-    strict: true,
-    parameters: {
-      type: 'object',
-      properties: {
-        type: {
-          type: 'string',
-          description: 'Tipo de busca, por exemplo: "news", "search", etc.',
-        },
-        query: {
-          type: 'string',
-          description:
-            'Termo de busca a ser pesquisado no Google.' +
-            'Varie os termos entre buscas consecutivas para obter resultados variados',
-        },
-        gl: {
-          type: 'string',
-          enum: ['br', 'us'],
-          description: 'Country',
-        },
-        location: {
-          type: 'string',
-          description: 'Country name',
-        },
-        interval: {
-          type: 'string',
-          enum: [
-            'lastHour',
-            'last24Hours',
-            'lastWeek',
-            'lastMonth',
-            'lastYear',
-            'allTime',
-          ],
-          description: 'Intervalo de tempo para a busca.',
-        },
-      },
-      additionalProperties: false,
-      required: ['type', 'query', 'interval', 'gl', 'location'],
-    },
-  },
+export const webSearch = tool({
+  name: 'webSearch',
+  description: 'Search Google for news, web results, etc.',
+  params: z.object({
+    type: z
+      .string()
+      .describe('Tipo de busca, por exemplo: "news", "search", etc.'),
+    query: z
+      .string()
+      .describe(
+        'Termo de busca a ser pesquisado no Google. ' +
+          'Varie os termos entre buscas consecutivas para obter resultados variados',
+      ),
+    gl: z.enum(['br', 'us']).describe('Country'),
+    location: z.string().describe('Country name'),
+    interval: z
+      .enum([
+        'lastHour',
+        'last24Hours',
+        'lastWeek',
+        'lastMonth',
+        'lastYear',
+        'allTime',
+      ])
+      .describe('Intervalo de tempo para a busca.'),
+  }),
   run: async (params) => {
     const { type, query, interval, gl, location } = params;
     // console.log('webSearch params', params);
@@ -113,4 +96,4 @@ export const webSearch: NodeTool = {
       };
     }
   },
-};
+});

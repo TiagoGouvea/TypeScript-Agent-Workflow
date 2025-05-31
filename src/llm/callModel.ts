@@ -12,12 +12,14 @@ export async function callModel({
   responseFormat,
   tools,
   debug,
+  providerModel,
 }: {
   systemPrompt?: string;
   messages: any[];
   responseFormat?: any;
   tools?: NodeTool[];
   debug?: boolean;
+  providerModel?: string;
 }) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
 
@@ -69,10 +71,12 @@ export async function callModel({
         : [];
 
     options = {
-      model: 'gpt-4.1-mini', // prince i/o : $1.1 • $4.4
-      // model: 'o3-mini', // prince i/o : $1.1 • $4.4
-      // model: 'o1', // prince i/o : $15 • $60
-      // model: 'gpt-4.5-preview', // prince i/o : $75 • $150
+      model: providerModel || 'gpt-4.1-mini', // Use provided model or default to gpt-4.1-mini
+      // Available models:
+      // 'gpt-4.1-mini' - prince i/o : $1.1 • $4.4
+      // 'o3-mini' - prince i/o : $1.1 • $4.4
+      // 'o1' - prince i/o : $15 • $60
+      // 'gpt-4.5-preview' - prince i/o : $75 • $150
       tools: toolsValue,
     };
 
