@@ -1,6 +1,10 @@
 .env
 /node_modules/
 
+# Claude code
+.claude/
+CLAUDE.md
+
 # Logs
 /logs/
 yarn-error.log

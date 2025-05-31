@@ -6,11 +6,14 @@ import { webSearch } from '../../tools/webSearch.ts';
 import { scrapingBee } from '../../tools/scrapingBee.ts';
 import { redditSearch } from '../../tools/redditSearch.ts';
 import { redditRead } from '../../tools/redditRead.ts';
+import { slackMessage } from '../../tools/slackMessage.ts';
+import { toolWithFixedParams } from '../../types/workflow/Tool.ts';
 
 // Steps
 // 1 - understandSubject - Ask the subject of the news, the interval, source languages
 // 2 - Research about the best news
 // 3 - Write the final list
+// 4 - Send it to Slack
 
 const understandSubject = new AgentNode({
   introductionText: 'I will create a daily news summary for you',
@@ -137,11 +140,32 @@ const writeNews = new AgentNode({
   `,
 });
 
+// Create a slackMessage tool with fixed webhookUrl
+const slackMessageWithFixedWebhook = toolWithFixedParams(slackMessage, {
+  webhookUrl: process.env.SLACK_WEBHOOK_URL,
+});
+
+const sendSlackMessage = new AgentNode({
+  introductionText: 'I will send the final daily news to Slack',
+  inputSource: InputSource.LastStep,
+  inputSchema: z.object({
+    markdown: z.string(),
+  }),
+  outputSchema: z.object({
+    markdown: z.string(),
+  }),
+  systemPrompt: `
+  You must send the final daily news to Slack.
+  `,
+  tools: [slackMessageWithFixedWebhook],
+});
+
 const testWorkflow = new Workflow({
   understandSubject,
   searchNews,
   readNews,
   writeNews,
+  sendSlackMessage,
 });
 await testWorkflow.execute();
 

@@ -1,20 +1,17 @@
-import { any, z } from 'zod';
+import { z } from 'zod';
 import { InputSource } from '../types/workflow/Input.ts';
 import {
   agentAsks,
   agentSays,
   logDebug,
   logError,
-  logStep,
-  workflowInfo,
 } from '../utils/log.ts';
 import { callModel } from '../llm/callModel.ts';
 import {
   type BaseNodeParams,
   WorkflowNode,
 } from '../types/workflow/WorkflowNode.ts';
-import type { Tool } from 'openai/resources/responses/responses';
-import type { NodeTool } from '../tools/webSearch.ts';
+import type { NodeTool } from '../types/workflow/Tool.ts';
 
 export interface AgentNodeParams extends BaseNodeParams {
   systemPrompt?: string;

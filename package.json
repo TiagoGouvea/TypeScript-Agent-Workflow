@@ -8,7 +8,8 @@
     "debugOptions": "DEBUG=taw:* ",
     "test": "DEBUG_DEPTH=null DEBUG=taw:* vitest run",
     "test:ui": "DEBUG_DEPTH=null DEBUG=taw:* vitest --ui --no-coverage --reporter=verbose",
-    "test:watch": "DEBUG_DEPTH=null DEBUG=taw:* vitest"
+    "test:watch": "DEBUG_DEPTH=null DEBUG=taw:* vitest",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -35,6 +36,7 @@
     "@vitest/ui": "3.1.1",
     "eslint": "^9.24.0",
     "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   },
   "dependencies": {

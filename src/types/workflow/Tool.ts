@@ -1,9 +1,10 @@
-import type { Tool } from 'openai/resources/responses/responses';
+import type { FunctionTool } from 'openai/resources/responses/responses';
 import { z } from 'zod';
 
 export type NodeTool = {
-  toolDeclaration: Tool;
+  toolDeclaration: FunctionTool;
   run: any;
+  fixedParams?: Record<string, any>;
 };
 
 export type ToolConfig<T extends z.ZodSchema> = {
@@ -94,5 +95,43 @@ export function tool<T extends z.ZodSchema>(config: ToolConfig<T>): NodeTool {
       parameters: zodToJsonSchema(config.params),
     },
     run: config.run,
+  };
+}
+
+export function toolWithFixedParams<T extends z.ZodSchema>(
+  baseTool: NodeTool,
+  fixedParams: Partial<z.infer<T>>
+): NodeTool {
+  // Create new schema excluding fixed parameters
+  const originalParams = baseTool.toolDeclaration.parameters;
+  const newProperties: any = {};
+  const newRequired: string[] = [];
+
+  if (originalParams && originalParams.properties) {
+    for (const [key, value] of Object.entries(originalParams.properties)) {
+      if (!(key in fixedParams)) {
+        newProperties[key] = value;
+        if (Array.isArray(originalParams.required) && originalParams.required.includes(key)) {
+          newRequired.push(key);
+        }
+      }
+    }
+  }
+
+  return {
+    toolDeclaration: {
+      ...baseTool.toolDeclaration,
+      parameters: {
+        ...originalParams,
+        properties: newProperties,
+        required: newRequired,
+      },
+    },
+    run: async (params: any) => {
+      // Merge fixed params with provided params
+      const fullParams = { ...fixedParams, ...params };
+      return baseTool.run(fullParams);
+    },
+    fixedParams,
   };
 }
