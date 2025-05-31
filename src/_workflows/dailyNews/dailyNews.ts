@@ -4,6 +4,8 @@ import { InputSource } from '../../types/workflow/Input.ts';
 import { AgentNode } from '../../nodes/Agent.ts';
 import { webSearch } from '../../tools/webSearch.ts';
 import { scrapingBee } from '../../tools/scrapingBee.ts';
+import { redditSearch } from '../../tools/redditSearch.ts';
+import { redditRead } from '../../tools/redditRead.ts';
 
 // Steps
 // 1 - understandSubject - Ask the subject of the news, the interval, source languages
@@ -26,6 +28,7 @@ const understandSubject = new AgentNode({
       .describe(
         'What languages do you want to use on the search? Ex: English, Portuguese...',
       ),
+    reddit: z.string().describe('Should I search on Reddit too? Ex: yes, no'),
   }),
   outputSchema: z.object({
     subject: z.string().describe('What subject do you want to search about?'),
@@ -65,10 +68,14 @@ const searchNews = new AgentNode({
   systemPrompt: `
   You must search news about the subject, in the interval and in the source languages the user specified.
   Search for at least 50 news and return at lest 50 news, so on the next step the workflow will filter and ranking the best.
-  
   Run at least four different search with different keywords, so on the next step the workflow will filter and ranking the best.
+
+  Always return at least 50 news.
+
+  if reddit is yes, search on reddit at least three different searches.
+
   `,
-  tools: [webSearch],
+  tools: [webSearch, redditSearch],
 });
 
 const readNews = new AgentNode({
@@ -89,8 +96,12 @@ const readNews = new AgentNode({
   }),
   systemPrompt: `
   Use scrapping tool to read the most relevant news, add more information on that, and return these first on the final list.
+
+  Always return at least 30 news.
+
+  if reddit is yes, read the most relevant news from reddit.
   `,
-  tools: [scrapingBee],
+  tools: [scrapingBee, redditRead],
 });
 
 const writeNews = new AgentNode({
@@ -103,7 +114,9 @@ const writeNews = new AgentNode({
   systemPrompt: `
   You must write a newsletter about the previous subject, ranking the most relevant news first.
   
-  Return at least 10 news.
+  Always return at least 10 news.
+
+  If reddit is yes, return the most relevant discussions on the context, with a summary.
 
   Return the markdown following this template.
   
@@ -115,6 +128,11 @@ const writeNews = new AgentNode({
   # News Title
   [link]
   [Source] - [date] 
+  [Summary]
+
+  # Reddit Post Title
+  [link]
+  [Author] [date] 
   [Summary]
   `,
 });

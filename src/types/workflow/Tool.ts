@@ -19,31 +19,59 @@ function zodToJsonSchema(schema: z.ZodSchema): any {
   const required: string[] = [];
 
   for (const [key, fieldSchema] of Object.entries(shape)) {
-    const field = fieldSchema as z.ZodSchema;
-    const fieldDef = (field as any)._def;
-    
+    let field = fieldSchema as z.ZodSchema;
+    let fieldDef = (field as any)._def;
+    let isOptional = false;
+
+    // Handle ZodOptional wrapper
+    if (fieldDef.typeName === 'ZodOptional') {
+      isOptional = true;
+      field = fieldDef.innerType;
+      fieldDef = (field as any)._def;
+    }
+
+    // Handle ZodDefault wrapper
+    if (fieldDef.typeName === 'ZodDefault') {
+      field = fieldDef.innerType;
+      fieldDef = (field as any)._def;
+    }
+
     if (fieldDef.typeName === 'ZodString') {
       properties[key] = { type: 'string' };
       if (fieldDef.description) {
         properties[key].description = fieldDef.description;
       }
       if (fieldDef.checks) {
-        const enumCheck = fieldDef.checks.find((c: any) => c.kind === 'includes');
+        const enumCheck = fieldDef.checks.find(
+          (c: any) => c.kind === 'includes',
+        );
         if (enumCheck) {
           properties[key].enum = enumCheck.value;
         }
       }
     } else if (fieldDef.typeName === 'ZodEnum') {
-      properties[key] = { 
+      properties[key] = {
         type: 'string',
-        enum: fieldDef.values 
+        enum: fieldDef.values,
       };
       if (fieldDef.description) {
         properties[key].description = fieldDef.description;
       }
+    } else if (fieldDef.typeName === 'ZodNumber') {
+      properties[key] = { type: 'number' };
+      if (fieldDef.description) {
+        properties[key].description = fieldDef.description;
+      }
+      if (fieldDef.checks) {
+        const minCheck = fieldDef.checks.find((c: any) => c.kind === 'min');
+        const maxCheck = fieldDef.checks.find((c: any) => c.kind === 'max');
+        if (minCheck) properties[key].minimum = minCheck.value;
+        if (maxCheck) properties[key].maximum = maxCheck.value;
+      }
     }
-    
-    if (!fieldDef.isOptional) {
+
+    // Only add to required if not optional and not having a default value
+    if (!isOptional && fieldDef.typeName !== 'ZodDefault') {
       required.push(key);
     }
   }
@@ -52,7 +80,7 @@ function zodToJsonSchema(schema: z.ZodSchema): any {
     type: 'object',
     properties,
     required,
-    additionalProperties: false
+    additionalProperties: false,
   };
 }
 
@@ -63,8 +91,8 @@ export function tool<T extends z.ZodSchema>(config: ToolConfig<T>): NodeTool {
       name: config.name,
       description: config.description,
       strict: true,
-      parameters: zodToJsonSchema(config.params)
+      parameters: zodToJsonSchema(config.params),
     },
-    run: config.run
+    run: config.run,
   };
 }
