@@ -11,43 +11,52 @@ export const slackMessage = tool({
     text: z.string().describe('Message text to send to the channel'),
     username: z
       .string()
-      .optional()
-      .describe('Optional custom username for the message'),
+      .describe(
+        'Optional custom username for the message.. Send "none" for no user.',
+      ),
     channel: z
       .string()
-      .optional()
-      .describe('Optional channel override (e.g., #general)'),
+      .describe(
+        'Optional channel override (e.g., #general). Send "none" for no channel.',
+      ),
     iconEmoji: z
       .string()
-      .optional()
-      .describe('Optional emoji icon for the message (e.g., :robot_face:)'),
+      .describe(
+        'Optional emoji icon for the message (e.g., :robot_face:). Send "none" for no icon',
+      ),
   }),
   run: async (params) => {
     const { webhookUrl, text, username, channel, iconEmoji } = params;
 
     console.log(
       chalk.bgBlue(' SLACK MESSAGE '),
-      chalk.blue(`Sending message to Slack: ${text.substring(0, 50)}...`),
+      chalk.blue(
+        `Sending message to Slack ${username ? `to ${username}` : ''} ${channel ? `on channel: ${channel}` : ''}...`,
+      ),
     );
 
     const payload: any = {
       text,
     };
 
+    if (username === 'none') payload.username = null;
+    if (channel === 'none') payload.channel = null;
+    if (iconEmoji === 'none') payload.icon_emoji = null;
+
     if (username) payload.username = username;
     if (channel) payload.channel = channel;
     if (iconEmoji) payload.icon_emoji = iconEmoji;
 
     try {
-      console.log('webhookUrl', webhookUrl);
-      console.log('payload', payload);
+      // console.log('webhookUrl', webhookUrl);
+      // console.log('payload', payload);
       const response = await axios.post(webhookUrl, payload, {
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      console.log('response', response);
+      // console.log('response', response);
 
       if (response.status === 200 && response.data === 'ok') {
         console.log(chalk.green('✓ Message sent successfully to Slack'));

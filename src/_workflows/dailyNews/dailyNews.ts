@@ -100,7 +100,7 @@ const readNews = new AgentNode({
   systemPrompt: `
   Use scrapping tool to read the most relevant news, add more information on that, and return these first on the final list.
 
-  Always return at least 30 news.
+  Always return at least 40 news.
 
   if reddit is yes, read the most relevant news from reddit.
   `,
@@ -117,13 +117,13 @@ const writeNews = new AgentNode({
   systemPrompt: `
   You must write a newsletter about the previous subject, ranking the most relevant news first.
   
-  Always return at least 10 news.
+  Always return at least 20 news.
 
   If reddit is yes, return the most relevant discussions on the context, with a summary.
 
   Return the markdown following this template.
   
-  # News Title
+  # [News Title]
   [link]
   [Source] - [date] 
   [Summary]
@@ -155,7 +155,8 @@ const sendSlackMessage = new AgentNode({
     markdown: z.string(),
   }),
   systemPrompt: `
-  You must send the final daily news to Slack.
+  You must send the final daily news to Slack. 
+  Adjust the markdown format to the slack format, example: [title](link).
   `,
   tools: [slackMessageWithFixedWebhook],
 });
