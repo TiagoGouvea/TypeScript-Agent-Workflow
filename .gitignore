@@ -13,6 +13,7 @@ yarn-error.log
 /results/
 /temp/
 backlog.md
+tsconfig.tsbuildinfo 
 
 # IDE and Computer files
 .idea/
