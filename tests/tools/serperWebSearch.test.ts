@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { webSearch } from '../../src/tools/webSearch';
+import { serperWebSearch } from '../../src/tools/serperWebSearch';
 
-describe('webSearch', () => {
+describe('serperWebSearch', () => {
   it('should search for news successfully', async () => {
     const params = {
       type: 'news',
@@ -11,17 +11,15 @@ describe('webSearch', () => {
       interval: 'last24Hours' as const,
     };
 
-    const result = await webSearch.run(params);
+    const result = await serperWebSearch.run(params);
+    console.log(result);
 
     // Verificar se o resultado não contém erro
     expect(result).not.toHaveProperty('error');
     expect(Array.isArray(result)).toBe(true);
 
-    // Se há resultados, verificar a estrutura
-    if (result.length > 0) {
-      expect(result[0]).toHaveProperty('title');
-      expect(result[0]).toHaveProperty('link');
-    }
+    expect(result[0]).toHaveProperty('title');
+    expect(result[0]).toHaveProperty('link');
   }, 30000); // Timeout de 30 segundos
 
   it('should search for general results successfully', async () => {
@@ -33,17 +31,16 @@ describe('webSearch', () => {
       interval: 'lastWeek' as const,
     };
 
-    const result = await webSearch.run(params);
+    const result = await serperWebSearch.run(params);
+    console.log(result);
 
     // Verificar se o resultado não contém erro
     expect(result).not.toHaveProperty('error');
     expect(Array.isArray(result)).toBe(true);
 
     // Se há resultados, verificar a estrutura
-    if (result.length > 0) {
-      expect(result[0]).toHaveProperty('title');
-      expect(result[0]).toHaveProperty('link');
-    }
+    expect(result[0]).toHaveProperty('title');
+    expect(result[0]).toHaveProperty('link');
   }, 30000);
 
   it('should handle empty query gracefully', async () => {
@@ -55,7 +52,7 @@ describe('webSearch', () => {
       interval: 'allTime' as const,
     };
 
-    const result = await webSearch.run(params);
+    const result = await serperWebSearch.run(params);
 
     // Verificar se o resultado é um array vazio ou contém erro
     expect(Array.isArray(result) || result.hasOwnProperty('error')).toBe(true);
@@ -70,7 +67,7 @@ describe('webSearch', () => {
       interval: 'lastHour' as const,
     };
 
-    const result = await webSearch.run(params);
+    const result = await serperWebSearch.run(params);
 
     // Verificar se o resultado não contém erro (se as chaves de API estiverem configuradas)
     expect(result).not.toHaveProperty('error');

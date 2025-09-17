@@ -86,7 +86,7 @@ export const crawlbase = tool({
         };
       }
     } catch (error: any) {
-      console.error('Error during web scraping:', error);
+      console.error('Error during crawlbase web scraping:', error);
       console.error(error);
       return {
         error: 'Failed to execute web scraping or embeddings processing',

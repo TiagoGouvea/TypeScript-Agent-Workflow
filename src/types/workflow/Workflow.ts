@@ -70,7 +70,6 @@ export class Workflow {
 
       if (stepNode.debug) logDebug('stepResult B', stepResult);
 
-      // console.log('> stepResult', stepResult);
       this.lastStepResult = stepResult;
 
       /////// Validate result
@@ -144,7 +143,8 @@ export class Workflow {
       (!step.outputSchema.shape || typeof step.outputSchema.shape !== 'object')
     ) {
       throw new Error(
-        'outputSchema must start with z.object() to be compatible with OpenAI function calling format',
+        'outputSchema must start with z.object() to be compatible with OpenAI function calling format - step.outputSchema.shape:' +
+          step.outputSchema.shape,
       );
     }
 

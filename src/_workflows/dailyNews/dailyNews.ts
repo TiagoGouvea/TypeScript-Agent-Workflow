@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Workflow } from '../../types/workflow/Workflow.ts';
 import { InputSource } from '../../types/workflow/Input.ts';
 import { AgentNode } from '../../nodes/Agent.ts';
-import { webSearch } from '../../tools/webSearch.ts';
+import { serperWebSearch } from '../../tools/serperWebSearch.ts';
 import { scrapingBee } from '../../tools/scrapingBee.ts';
 import { redditSearch } from '../../tools/redditSearch.ts';
 import { redditRead } from '../../tools/redditRead.ts';
@@ -78,7 +78,7 @@ const searchNews = new AgentNode({
   if reddit is yes, search on reddit at least three different searches.
 
   `,
-  tools: [webSearch, redditSearch],
+  tools: [serperWebSearch, redditSearch],
 });
 
 const readNews = new AgentNode({

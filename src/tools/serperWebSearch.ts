@@ -3,21 +3,33 @@ import chalk from 'chalk';
 import { z } from 'zod';
 import { tool } from '../types/workflow/Tool.ts';
 
-export const webSearch = tool({
-  name: 'webSearch',
+export const serperWebSearch = tool({
+  name: 'serperWebSearch',
   description: 'Search Google for news, web results, etc.',
   params: z.object({
     type: z
-      .string()
-      .describe('Tipo de busca, por exemplo: "news", "search", etc.'),
+      .enum([
+        'shopping',
+        'news',
+        'search',
+        'images',
+        'videos',
+        'news',
+        'places',
+        'maps',
+        'reviews',
+        'scholar',
+        'webpage',
+      ])
+      .describe('Tipo de conteúdo a ser buscado'),
     query: z
       .string()
       .describe(
-        'Termo de busca a ser pesquisado no Google. ' +
-          'Varie os termos entre buscas consecutivas para obter resultados variados',
+        'Termo de busca a ser pesquisado no Google. Varie os termos entre buscas consecutivas para obter resultados variados',
       ),
     gl: z.enum(['br', 'us']).describe('Country'),
-    location: z.string().describe('Country name'),
+    hl: z.enum(['pt', 'en']).describe('Language'),
+    location: z.string().describe('Country name - if open search send "-"'),
     interval: z
       .enum([
         'lastHour',
@@ -30,12 +42,14 @@ export const webSearch = tool({
       .describe('Intervalo de tempo para a busca.'),
   }),
   run: async (params) => {
-    const { type, query, interval, gl, location } = params;
+    const { type, query, interval, gl, hl, location } = params;
     // console.log('webSearch params', params);
 
     console.log(
       chalk.bgCyan(' WEB SEARCH '),
-      chalk.cyan(`Searching on Google for: ${query} (${type})`),
+      chalk.cyan(
+        `Searching on Google for: ${query} [${location}/${gl}/${hl}] (${type})`,
+      ),
     );
 
     // Map user-friendly interval to `tbs` values
@@ -55,8 +69,10 @@ export const webSearch = tool({
       num: 20,
       tbs: tbs !== '' ? tbs : null,
       gl,
-      // location,
+      hl,
+      location: location !== '-' ? location : null,
     });
+    // console.log('search data', data);
 
     const config = {
       method: 'post',
@@ -73,26 +89,27 @@ export const webSearch = tool({
 
     try {
       const response = await axios.request(config);
-      // console.log('webSearch response.data.len', response.data[type].length);
-      if (!response.data[type]) {
-        console.log('🚨🚨🚨');
-        console.log(response);
+      const results = response.data[type] || response.data.organic;
+      // console.log('webSearch response.data.len', results.length);
+      if (!results) {
+        console.log('🚨🚨🚨 No useful data?');
+        console.log(response.data);
       }
       // console.log('response.data', response.data);
-      return response.data[type] || [];
+      return { relatedSearches: response.data.relatedSearches, results };
     } catch (error: any) {
-      const code = error.status || error.response.status || error.code;
-      const message = error.response.message || error.response.data.message;
+      const code = error?.status || error?.response?.status || error?.code;
+      const message =
+        error?.response?.message || error?.response?.data?.message;
       console.error(
         'Error during Serper search - code:' + code + ' - message:' + message,
-        error.message,
       );
       if (!code || !message) {
         console.error(error);
       }
       return {
         error: 'Failed to execute Serper search',
-        details: error.message,
+        details: message,
       };
     }
   },

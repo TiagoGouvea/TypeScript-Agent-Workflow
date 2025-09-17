@@ -42,6 +42,10 @@ export function workflowInfo(message: string, ...args: any[]) {
   console.log(chalk.bgCyan(' WORKFLOW '), chalk.cyan(message), ...args);
 }
 
+export function loopInfo(message: string, ...args: any[]) {
+  console.log(chalk.bgCyan(' LOOP '), chalk.cyan(message), ...args);
+}
+
 export function agentSays(message: string, ...args: any[]) {
   console.log(chalk.bgBlue(' AGENT SAYS '), chalk.blue(message), ...args);
 }

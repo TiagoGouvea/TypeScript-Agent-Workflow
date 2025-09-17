@@ -99,7 +99,7 @@ export const scrapingBee = tool({
         };
       }
     } catch (error: any) {
-      console.error('Error during web scraping:', error.message);
+      console.error('Error during scrapingBee web scraping:', error.message);
       console.error(error.message);
       console.log(Object.keys(error));
       return {

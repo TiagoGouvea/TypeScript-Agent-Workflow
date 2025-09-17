@@ -1,11 +1,6 @@
 import { z } from 'zod';
 import { InputSource } from '../types/workflow/Input.ts';
-import {
-  agentAsks,
-  agentSays,
-  logDebug,
-  logError,
-} from '../utils/log.ts';
+import { agentAsks, agentSays, logDebug, logError } from '../utils/log.ts';
 import { callModel } from '../llm/callModel.ts';
 import {
   type BaseNodeParams,
@@ -17,6 +12,14 @@ export interface AgentNodeParams extends BaseNodeParams {
   systemPrompt?: string;
   tools?: NodeTool[];
   providerModel?: string;
+  maxIterations?: number; // Maximum number of iterations to prevent infinite loops (default: 10)
+  llmParams?: {
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+  };
 }
 
 interface lmresult {
@@ -28,12 +31,22 @@ export class AgentNode extends WorkflowNode {
   public systemPrompt?: string;
   public tools?: NodeTool[];
   public providerModel?: string;
+  public maxIterations: number;
+  public llmParams?: {
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+  };
 
   constructor(params: AgentNodeParams) {
     super(params);
     this.systemPrompt = params.systemPrompt;
     this.tools = params.tools;
     this.providerModel = params.providerModel;
+    this.maxIterations = params.maxIterations ?? 10; // Default to 10 iterations
+    this.llmParams = params.llmParams;
   }
 
   async execute({ step, stepInput }: { step: any; stepInput: any }) {
@@ -83,6 +96,7 @@ export class AgentNode extends WorkflowNode {
                 ? `- Seja objetivo, siga para o que precisa ser sabido e faça quantas perguntas achar necessário para obter as informações necessárias`
                 : `- Nunca faça perguntas ao usuário`
             }
+            - A data de hoje é ${new Date().toISOString()}
           </base_introduction>
           <workflow>
             Etapa atual:${step.name}
@@ -139,7 +153,23 @@ export class AgentNode extends WorkflowNode {
       ];
       let shouldContinueInThisStep = true;
       let allMessages = [];
+      let iterationCount = 0;
+
       while (shouldContinueInThisStep) {
+        iterationCount++;
+
+        if (this.debug) {
+          logDebug(
+            `AgentNode iteration ${iterationCount}/${this.maxIterations}`,
+          );
+        }
+
+        // Warning when approaching the limit
+        if (iterationCount === Math.floor(this.maxIterations * 0.8)) {
+          console.warn(
+            `AgentNode approaching iteration limit: ${iterationCount}/${this.maxIterations}`,
+          );
+        }
         // Rodar system prompt
         try {
           // @ todo quais opções o modelo tem?
@@ -164,6 +194,7 @@ export class AgentNode extends WorkflowNode {
             tools: this.tools,
             debug: step.debug,
             providerModel: this.providerModel,
+            llmParams: this.llmParams,
           });
           // Validate result with schema
           if (this.debug) console.log('llmResult', llmResult);
@@ -187,6 +218,12 @@ export class AgentNode extends WorkflowNode {
           shouldContinueInThisStep =
             !!(agentResponse.humanQuestion && allowUserInteraction) ||
             !agentResponse.gotToNextStep;
+
+          // Force stop if max iterations reached
+          if (iterationCount >= this.maxIterations) {
+            agentSays('Reached the maximum iterations (${this.maxIterations})');
+            shouldContinueInThisStep = false;
+          }
 
           if (step.debug)
             logDebug('shouldContinueInThisStep', shouldContinueInThisStep);
@@ -249,6 +286,7 @@ async function formatStepResult(step: any, allMessages: any[]): Promise<any> {
     messages,
     responseFormat: step.outputSchema ? step.outputSchema : undefined,
     providerModel: step.providerModel,
+    llmParams: step.llmParams,
   });
   return lastLlmResult.result;
 }

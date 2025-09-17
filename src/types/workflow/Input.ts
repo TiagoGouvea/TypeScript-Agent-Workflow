@@ -79,7 +79,7 @@ export const getStepInput = async (
     const daftData = mergeTwoStructuredData(draftStructuredData, inputData);
     // console.log('daftData', daftData);
     const missingValues = Object.keys(daftData).reduce((acc, key) => {
-      if (!daftData[key].value) {
+      if (daftData[key].value === undefined) {
         acc[key] = { description: daftData[key].description, value: undefined };
       }
       return acc;

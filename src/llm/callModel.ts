@@ -2,9 +2,9 @@ import { zodResponseFormat } from 'openai/helpers/zod';
 import OpenAI from 'openai';
 import { parseChatCompletion } from 'openai/lib/parser';
 import { logError, llmInfo } from '../utils/log.ts';
-import type { NodeTool } from '../tools/webSearch.ts';
 import type { ResponseCreateParams } from 'openai/resources/responses/responses';
 import type { CompletionCreateParams } from 'openai/resources/completions';
+import type { NodeTool } from '../types/workflow/Tool.ts';
 
 export async function callModel({
   systemPrompt,
@@ -13,6 +13,7 @@ export async function callModel({
   tools,
   debug,
   providerModel,
+  llmParams,
 }: {
   systemPrompt?: string;
   messages: any[];
@@ -20,6 +21,13 @@ export async function callModel({
   tools?: NodeTool[];
   debug?: boolean;
   providerModel?: string;
+  llmParams?: {
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+  };
 }) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
 
@@ -78,6 +86,20 @@ export async function callModel({
       // 'o1' - prince i/o : $15 • $60
       // 'gpt-4.5-preview' - prince i/o : $75 • $150
       tools: toolsValue,
+      // Apply LLM parameters if provided
+      ...(llmParams?.temperature !== undefined && {
+        temperature: llmParams.temperature,
+      }),
+      ...(llmParams?.top_p !== undefined && { top_p: llmParams.top_p }),
+      ...(llmParams?.max_tokens !== undefined && {
+        max_tokens: llmParams.max_tokens,
+      }),
+      ...(llmParams?.frequency_penalty !== undefined && {
+        frequency_penalty: llmParams.frequency_penalty,
+      }),
+      ...(llmParams?.presence_penalty !== undefined && {
+        presence_penalty: llmParams.presence_penalty,
+      }),
     };
 
     if (completionType === completionTypes.completion) {
