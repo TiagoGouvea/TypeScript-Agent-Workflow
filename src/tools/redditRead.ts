@@ -33,15 +33,15 @@ export const redditRead = tool({
 
     // Clean and format the URL
     let redditUrl = url.trim();
-    
+
     // If it's just a path, add the domain
     if (redditUrl.startsWith('/r/')) {
       redditUrl = `https://www.reddit.com${redditUrl}`;
     }
-    
+
     // Remove trailing slash and add .json
     redditUrl = redditUrl.replace(/\/$/, '') + '.json';
-    
+
     // Add query parameters
     const urlParams = new URLSearchParams({
       limit: limit.toString(),
@@ -56,7 +56,11 @@ export const redditRead = tool({
         },
       });
 
-      if (!response.data || !Array.isArray(response.data) || response.data.length < 2) {
+      if (
+        !response.data ||
+        !Array.isArray(response.data) ||
+        response.data.length < 2
+      ) {
         return {
           error: 'Invalid Reddit post URL or no data found',
         };
@@ -80,19 +84,27 @@ export const redditRead = tool({
       };
 
       // Extract comments recursively
-      const extractComments = (commentsList: any[], currentDepth = 0): any[] => {
+      const extractComments = (
+        commentsList: any[],
+        currentDepth = 0,
+      ): any[] => {
         if (currentDepth >= depth) return [];
-        
+
         const comments: any[] = [];
-        
+
         for (const commentItem of commentsList) {
           const comment = commentItem.data;
-          
+
           // Skip deleted/removed comments and "more" items
-          if (comment.kind === 'more' || !comment.body || comment.body === '[deleted]' || comment.body === '[removed]') {
+          if (
+            comment.kind === 'more' ||
+            !comment.body ||
+            comment.body === '[deleted]' ||
+            comment.body === '[removed]'
+          ) {
             continue;
           }
-          
+
           const commentObj = {
             id: comment.id,
             author: comment.author,
@@ -100,17 +112,24 @@ export const redditRead = tool({
             score: comment.score,
             created_utc: comment.created_utc,
             depth: currentDepth,
-            replies: [],
+            replies: [] as any[],
           };
-          
+
           // Process replies if they exist
-          if (comment.replies && comment.replies.data && comment.replies.data.children) {
-            commentObj.replies = extractComments(comment.replies.data.children, currentDepth + 1);
+          if (
+            comment.replies &&
+            comment.replies.data &&
+            comment.replies.data.children
+          ) {
+            commentObj.replies = extractComments(
+              comment.replies.data.children,
+              currentDepth + 1,
+            );
           }
-          
+
           comments.push(commentObj);
         }
-        
+
         return comments;
       };
 
@@ -122,8 +141,10 @@ export const redditRead = tool({
         total_comments: comments.length,
       };
 
-      console.log(chalk.green(`Read Reddit post with ${comments.length} comments`));
-      
+      console.log(
+        chalk.green(`Read Reddit post with ${comments.length} comments`),
+      );
+
       return result;
     } catch (error: any) {
       console.error('Error reading Reddit post:', error.message);

@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import { ZodObject, type ZodType } from 'zod';
 import { logStep } from '../../utils/log.ts';
 
 /**
@@ -47,6 +47,9 @@ export function mergeTwoStructuredData(
 }
 
 export function inputSchemaToStructuredData(inputSchema: ZodType<any>) {
+  if (!(inputSchema instanceof ZodObject))
+    throw new Error('input schema deve ser do tipo ZodObject');
+
   const shape = inputSchema.shape as Record<string, { description?: string }>;
 
   const stepInput: StructuredData<any> = Object.keys(shape).reduce(
