@@ -7,6 +7,7 @@ import {
 } from './StructuredData.ts';
 import { getStepInput, InputSource } from './Input.ts';
 import type { WorkflowNode } from './WorkflowNode.ts';
+import { ZodObject } from 'zod';
 
 /**
  * Motor de orquestração de steps.
@@ -140,6 +141,7 @@ export class Workflow {
 
     if (
       step.outputSchema &&
+      step.outputSchema instanceof ZodObject &&
       (!step.outputSchema.shape || typeof step.outputSchema.shape !== 'object')
     ) {
       throw new Error(

@@ -145,7 +145,8 @@ export const openAIWebSearch = tool({
     });
     // console.dir(completion, { depth: null });
 
-    const results = JSON.parse(completion.choices[0].message.content);
+    const content = completion.choices[0].message.content;
+    const results = content ? JSON.parse(content) : '';
     console.dir(results.results, { depth: null });
 
     // console.log('response.output_text', response.output_text);

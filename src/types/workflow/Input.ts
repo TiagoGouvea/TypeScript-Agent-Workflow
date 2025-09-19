@@ -22,11 +22,16 @@ export enum InputSource {
   Mixed = 'MIXED',
 }
 
+type MissingValues = Record<
+  string,
+  { description: string | undefined; value: string | undefined }
+>;
+
 export const getStepInput = async (
   workflow: Workflow,
   step: WorkflowNode,
   lastStepOutput?: StructuredData<any>,
-  inputObject?: Object,
+  inputObject?: StructuredData<any>,
 ): Promise<StructuredData<any>> => {
   // @todo
   // Mixed input
@@ -56,23 +61,33 @@ export const getStepInput = async (
     return mergeTwoStructuredData(draftStructuredData, lastStepOutput);
   } else if (step.inputSource == InputSource.UserInput) {
     return getUserInput(draftStructuredData);
-  } else if (step.inputSource == InputSource.LastStepAndUserInput) {
+  } else if (
+    step.inputSource == InputSource.LastStepAndUserInput &&
+    lastStepOutput
+  ) {
     const daftData = mergeTwoStructuredData(
       draftStructuredData,
       lastStepOutput,
     );
     const missingValues = Object.keys(daftData).reduce((acc, key) => {
       if (!daftData[key].value) {
-        acc[key] = { description: daftData[key].description, value: undefined };
+        acc[key] = {
+          description: daftData[key].description,
+          value: undefined,
+        };
       }
       return acc;
-    }, {});
+    }, {} as MissingValues);
+
     if (Object.keys(missingValues).length > 0) {
       const userInput = await getUserInput(missingValues);
       return mergeTwoStructuredData(daftData, userInput);
     }
     return daftData;
-  } else if (step.inputSource == InputSource.DataObjectAndUserInput) {
+  } else if (
+    step.inputSource == InputSource.DataObjectAndUserInput &&
+    inputObject
+  ) {
     // console.log('inputObject', inputObject);
     const inputData = rawDataObjectToStructuredData(inputObject);
     // console.log('inputData', inputData);
@@ -83,13 +98,13 @@ export const getStepInput = async (
         acc[key] = { description: daftData[key].description, value: undefined };
       }
       return acc;
-    }, {});
+    }, {} as MissingValues);
     if (Object.keys(missingValues).length > 0) {
       const userInput = await getUserInput(missingValues);
       return mergeTwoStructuredData(daftData, userInput);
     }
     return daftData;
-  } else throw new Error('input not expected: ', step.inputSource);
+  } else throw new Error('input not expected: ' + step.inputSource);
   // // Note: InputSource.Mixed would require more complex logic to combine sources,
   // // potentially based on specific configurations per field.
   //

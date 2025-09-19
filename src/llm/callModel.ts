@@ -2,9 +2,11 @@ import { zodResponseFormat } from 'openai/helpers/zod';
 import OpenAI from 'openai';
 import { parseChatCompletion } from 'openai/lib/parser';
 import { logError, llmInfo } from '../utils/log.ts';
-import type { ResponseCreateParams } from 'openai/resources/responses/responses';
-import type { CompletionCreateParams } from 'openai/resources/completions';
 import type { NodeTool } from '../types/workflow/Tool.ts';
+import type {
+  ChatCompletion,
+  ChatCompletionCreateParamsBase,
+} from 'openai/resources/chat/completions.mjs';
 
 export async function callModel({
   systemPrompt,
@@ -35,18 +37,10 @@ export async function callModel({
   if (systemPrompt) messages.unshift({ role: 'system', content: systemPrompt });
   let firstCall = true;
   let hasToolCalls = false;
-  let completion;
   let toolsCalled = false;
   let result;
   let openai: OpenAI;
-  let options: ResponseCreateParams | CompletionCreateParams;
-
-  enum completionTypes {
-    response = 'response',
-    completion = 'completion',
-  }
-
-  const completionType: completionTypes = completionTypes.response;
+  let options: ChatCompletionCreateParamsBase;
 
   try {
     openai = new OpenAI({
@@ -75,7 +69,10 @@ export async function callModel({
 
     const toolsValue =
       tools && tools.length
-        ? tools.map((tollNode) => tollNode.toolDeclaration)
+        ? tools.map((tollNode) => ({
+            function: tollNode.toolDeclaration,
+            type: 'function',
+          }))
         : [];
 
     options = {
@@ -85,7 +82,7 @@ export async function callModel({
       // 'o3-mini' - prince i/o : $1.1 • $4.4
       // 'o1' - prince i/o : $15 • $60
       // 'gpt-4.5-preview' - prince i/o : $75 • $150
-      tools: toolsValue,
+      tools: [],
       // Apply LLM parameters if provided
       ...(llmParams?.temperature !== undefined && {
         temperature: llmParams.temperature,
@@ -100,23 +97,13 @@ export async function callModel({
       ...(llmParams?.presence_penalty !== undefined && {
         presence_penalty: llmParams.presence_penalty,
       }),
-    };
 
-    if (completionType === completionTypes.completion) {
-      options.messages = messages;
-      options.response_format = zodResponseFormat(
-        responseFormat,
-        'parsed_response',
-      );
-    } else {
-      options.input = messages;
-      options.text = {
-        format: {
-          ...zodResponseFormat(responseFormat, 'parsed_response').json_schema,
-          type: 'json_schema',
-        },
-      };
-    }
+      messages,
+
+      response_format: zodResponseFormat(responseFormat, 'parsed_response'),
+
+      stream: false,
+    };
   } catch (error) {
     logError('callModel params error', error);
     console.error(error);
@@ -137,25 +124,24 @@ export async function callModel({
       //   tools?.length ? 'com ferramentas' : 'sem ferramentas',
       //   '...',
       // );
-      llmInfo('Calling OpenAI'); ///[mode:' + completionType + ']
+      llmInfo('Calling OpenAI');
 
-      if (completionType === completionTypes.completion) {
-        completion = await openai.completions.create(options);
-      } else {
-        completion = await openai.responses.create(options);
-      }
+      const completion = (await openai.chat.completions.create(
+        options,
+      )) as ChatCompletion;
+
       // console.log('OpenAI response:', completion);
       // console.log('OpenAI response.output:', completion.output);
 
+      let parsedCompletion;
       try {
-        if (completionType === completionTypes.completion) {
-          completion = parseChatCompletion(completion, options);
-        }
+        parsedCompletion = parseChatCompletion(completion, options);
       } catch (error) {
         console.error(error);
         console.error('🚨 Error parsing completion:');
         // console.log('completion:');
         // console.dir(completion.choices[0].message.content, { depth: null });
+        throw error;
       }
       // parseChatCompletion(a);
       // console.log(
@@ -164,26 +150,17 @@ export async function callModel({
       // );
       // debugOAI('completion', completion);
 
-      const choice =
-        completionType === completionTypes.completion
-          ? completion.choices[0]
-          : completion.output[completion.output.length - 1];
+      const choice = parsedCompletion.choices[0];
 
-      hasToolCalls =
-        choice?.message?.tool_calls?.length > 0 ||
-        choice?.type == 'function_call';
+      hasToolCalls = (choice?.message?.tool_calls?.length ?? 0) > 0;
 
       if (hasToolCalls) {
         if (!tools || !tools.length) throw new Error('No tools found');
         // console.log('hasToolCalls...', completion);
 
         toolsCalled = true;
-        let toolCalls;
-        if (completionType === completionTypes.completion) {
-          toolCalls = choice.message?.tool_calls;
-        } else {
-          toolCalls = [{ function: choice }];
-        }
+        const toolCalls = choice.message?.tool_calls ?? [];
+
         if (debug) llmInfo('hasToolCalls', toolCalls);
 
         // Process all tool calls concurrently using Promise.all
@@ -211,24 +188,12 @@ export async function callModel({
               // console.log('rr', rr);
 
               // debugOAI('⏩⏩👉 rest', rest);
-              if (completionType === completionTypes.completion) {
-                const rest = {
-                  role: 'tool',
-                  name: toolCall!.function.name,
-                  content: JSON.stringify(rr),
-                  // tool_call_id: toolCall.id,
-                };
-                messages.push({ ...rest, functionCall: toolCall });
-              } else {
-                messages.push(choice);
-                const rest = {
-                  type: 'function_call_output',
-                  call_id: toolCall.function.call_id,
-                  output: JSON.stringify(rr),
-                };
-                // console.log('rest', rest);
-                messages.push(rest);
-              }
+              const rest = {
+                role: 'tool',
+                name: toolCall!.function.name,
+                content: JSON.stringify(rr),
+              };
+              messages.push({ ...rest, functionCall: toolCall });
             } catch (error: any) {
               logError(
                 '🚨 Error calling tool:',
@@ -244,15 +209,11 @@ export async function callModel({
         // options.tools = undefined;
         // Run completions again
         // @todo add to state
-        if (completionType === completionTypes.completion)
-          options.messages = messages;
-        else options.input = messages;
+        options.messages = messages;
+        // else options.input = messages;
       } else {
         // console.log('choice', choice);
-        result =
-          completionType === completionTypes.completion
-            ? choice.message.parsed
-            : choice.content[0].text;
+        result = choice.message.parsed;
         // console.log('result', result);
         hasToolCalls = false;
       }
@@ -261,7 +222,7 @@ export async function callModel({
     }
 
     if (responseFormat && typeof result !== 'object') {
-      result = JSON.parse(result);
+      result = JSON.parse(result!);
     }
 
     return { result, messages: messages };

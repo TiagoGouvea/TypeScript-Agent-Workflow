@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { Workflow } from '../../types/workflow/Workflow.ts';
 import { InputSource } from '../../types/workflow/Input.ts';
+import { AgentNode } from '../../nodes/Agent.ts';
 
 // Step 1: Discuss the subject and objectives
-const createCharacter = createAgentStep({
+const createCharacter = new AgentNode({
   name: 'Create a character',
   introductionText: 'I will create a character',
   // Step Input
@@ -29,7 +30,7 @@ const createCharacter = createAgentStep({
 });
 
 // Step 2: Write the final post
-const writeStory = createAgentStep({
+const writeStory = new AgentNode({
   name: 'Write a story',
   introductionText: 'I will write a story',
   inputSchema: createCharacter.outputSchema,
