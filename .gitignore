@@ -1,6 +1,9 @@
 .env
 /node_modules/
 
+# Database files
+/database/
+
 # Claude code
 .claude/
 CLAUDE.md
