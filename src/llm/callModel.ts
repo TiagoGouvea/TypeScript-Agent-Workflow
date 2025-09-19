@@ -40,8 +40,7 @@ export async function callModel({
   let toolsCalled = false;
   let result;
   let openai: OpenAI;
-  let options: // ResponseCreateParams
-  ChatCompletionCreateParamsBase;
+  let options: ChatCompletionCreateParamsBase;
 
   try {
     openai = new OpenAI({
@@ -105,17 +104,6 @@ export async function callModel({
 
       stream: false,
     };
-
-    // if (completionType === CompletionType.completion) {
-    // } else {
-    //   options.input = messages;
-    //   options.text = {
-    //     format: {
-    //       ...zodResponseFormat(responseFormat, 'parsed_response').json_schema,
-    //       type: 'json_schema',
-    //     },
-    //   };
-    // }
   } catch (error) {
     logError('callModel params error', error);
     console.error(error);
@@ -136,24 +124,18 @@ export async function callModel({
       //   tools?.length ? 'com ferramentas' : 'sem ferramentas',
       //   '...',
       // );
-      llmInfo('Calling OpenAI'); ///[mode:' + completionType + ']
+      llmInfo('Calling OpenAI');
 
-      // if (completionType === CompletionType.completion) {
       const completion = (await openai.chat.completions.create(
         options,
       )) as ChatCompletion;
-      // } else {
-      //   completion = await openai.chat.responses.create(options);
-      // }
+
       // console.log('OpenAI response:', completion);
       // console.log('OpenAI response.output:', completion.output);
 
       let parsedCompletion;
       try {
         parsedCompletion = parseChatCompletion(completion, options);
-        // };
-        // if (completionType === CompletionType.completion) {
-        // parsedCompletion
       } catch (error) {
         console.error(error);
         console.error('🚨 Error parsing completion:');
@@ -169,8 +151,6 @@ export async function callModel({
       // debugOAI('completion', completion);
 
       const choice = parsedCompletion.choices[0];
-      // completionType === CompletionType.completion
-      // ? : completion.output[completion.output.length - 1];
 
       hasToolCalls = (choice?.message?.tool_calls?.length ?? 0) > 0;
 
@@ -180,10 +160,7 @@ export async function callModel({
 
         toolsCalled = true;
         const toolCalls = choice.message?.tool_calls ?? [];
-        // if (completionType === CompletionType.completion) {
-        // } else {
-        //   toolCalls = [{ function: choice }];
-        // }
+
         if (debug) llmInfo('hasToolCalls', toolCalls);
 
         // Process all tool calls concurrently using Promise.all
@@ -211,24 +188,12 @@ export async function callModel({
               // console.log('rr', rr);
 
               // debugOAI('⏩⏩👉 rest', rest);
-              // if (completionType === CompletionType.completion) {
               const rest = {
                 role: 'tool',
                 name: toolCall!.function.name,
                 content: JSON.stringify(rr),
-                // tool_call_id: toolCall.id,
               };
               messages.push({ ...rest, functionCall: toolCall });
-              // } else {
-              //   messages.push(choice);
-              //   const rest = {
-              //     type: 'function_call_output',
-              //     call_id: toolCall.function.call_id,
-              //     output: JSON.stringify(rr),
-              //   };
-              //   // console.log('rest', rest);
-              //   messages.push(rest);
-              // }
             } catch (error: any) {
               logError(
                 '🚨 Error calling tool:',
@@ -244,15 +209,11 @@ export async function callModel({
         // options.tools = undefined;
         // Run completions again
         // @todo add to state
-        // if (completionType === CompletionType.completion)
         options.messages = messages;
         // else options.input = messages;
       } else {
         // console.log('choice', choice);
         result = choice.message.parsed;
-        // completionType === CompletionType.completion
-        //   ?
-        //   : choice.content[0].text;
         // console.log('result', result);
         hasToolCalls = false;
       }

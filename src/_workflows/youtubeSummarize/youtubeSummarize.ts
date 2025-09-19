@@ -9,9 +9,17 @@ import { youtubeTranscriptPlus } from '../../tools/youtubeTranscriptPlus.ts';
 // 2 - Will get the transcript from the video
 // 3 - Will write a summary of the video content
 
+const inputObject = {
+  // videoUrl: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', // First video on YouTube - "Me at the zoo"
+  videoUrl: 'https://www.youtube.com/watch?v=-GRLxGKNa1Y',
+  summaryType: 'detailed',
+  summaryLanguage: 'en',
+};
+
 const getVideoInfo = new AgentNode({
   introductionText: 'I help get YouTube video transcripts',
-  inputSource: InputSource.UserInput,
+  //inputObject,
+  inputSource: InputSource.UserInput, // InputSource.DataObjectAndUserInput
   inputSchema: z.object({
     videoUrl: z.string().describe('What is the YouTube video URL?'),
     summaryType: z
