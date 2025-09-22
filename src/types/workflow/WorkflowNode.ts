@@ -8,7 +8,7 @@ export interface BaseNodeParams {
   inputSchema?: ZodType;
   inputSource?: InputSource;
   inputObject?: Object;
-  inputData?: StructuredData;
+  inputData?: StructuredData<Record<string, any>>;
   outputSchema: ZodType;
   introductionText?: string;
   allowHumanResponse?: boolean;
@@ -19,7 +19,7 @@ export class WorkflowNode {
   public name?: string;
   public inputSchema?: ZodType;
   public inputSource?: InputSource;
-  public inputObject?: Object;
+  public inputObject?: Record<string, any>;
   // public inputStructuredData?: StructuredData;
   public outputSchema!: ZodType;
   public introductionText?: string;

@@ -7,14 +7,15 @@ import {
 } from './StructuredData.ts';
 import { getStepInput, InputSource } from './Input.ts';
 import type { WorkflowNode } from './WorkflowNode.ts';
+import { ZodObject } from 'zod';
 import { WorkflowStepLogger } from '../../utils/workflowLogger.ts';
 
-interface WorkflowOptions {
+export interface WorkflowOptions {
   name?: string;
   logger?: WorkflowStepLogger;
 }
 
-interface ExecuteOptions {
+export interface ExecuteOptions {
   logger?: WorkflowStepLogger;
   runLabel?: string;
 }
@@ -190,6 +191,7 @@ export class Workflow {
 
     if (
       step.outputSchema &&
+      step.outputSchema instanceof ZodObject &&
       (!step.outputSchema.shape || typeof step.outputSchema.shape !== 'object')
     ) {
       throw new Error(

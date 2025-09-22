@@ -28,7 +28,7 @@ export const crawlbase = tool({
       ),
   }),
   run: async (params) => {
-    const { url, lookFor, mode } = params;
+    const { url, lookFor, returnMode } = params;
     // console.log('webScraper params', params);
 
     console.log(
@@ -55,7 +55,7 @@ export const crawlbase = tool({
 
         // console.log('Conteúdo da página:', content.length);
 
-        if (mode === 'fullHtmlContent') return content;
+        if (returnMode === 'fullHtmlContent') return content;
 
         return content;
 

@@ -8,6 +8,8 @@ import { systemAsks, systemInfo } from './utils/log.ts';
 const agenciesDir = './src/_agencies';
 const workflowsDir = './src/_workflows';
 
+type Entry = { name: string; filePath: string; type: 'agency' | 'workflow' };
+
 // Function to dynamically import and execute a workflow
 async function executeWorkflow(workflowName: string) {
   try {
@@ -61,7 +63,6 @@ async function showInteractiveMenu() {
   }
 
   // Unify the entries in one list
-  type Entry = { name: string; filePath: string; type: 'agency' | 'workflow' };
   const entries: Entry[] = [];
   agencyFiles.forEach((file) =>
     entries.push({
@@ -112,7 +113,7 @@ async function showInteractiveMenu() {
 }
 
 // Run an agency with a new Node.js process (keeping this for agencies only)
-function runAgency() {
+function runAgency(chosen: Entry) {
   console.log(`Agency execution is not yet implemented in the same process.`);
   console.log(`Please update the implementation for agencies.`);
   process.exit(1);
