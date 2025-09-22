@@ -7,6 +7,17 @@ import {
 } from './StructuredData.ts';
 import { getStepInput, InputSource } from './Input.ts';
 import type { WorkflowNode } from './WorkflowNode.ts';
+import { WorkflowStepLogger } from '../../utils/workflowLogger.ts';
+
+interface WorkflowOptions {
+  name?: string;
+  logger?: WorkflowStepLogger;
+}
+
+interface ExecuteOptions {
+  logger?: WorkflowStepLogger;
+  runLabel?: string;
+}
 
 /**
  * Motor de orquestração de steps.
@@ -15,9 +26,13 @@ export class Workflow {
   steps: Record<string, WorkflowNode>;
   lastStepResult: StructuredData<any> = {};
   globalState: Record<string, { input: any; output: any }> = {};
+  private name: string;
+  private logger: WorkflowStepLogger;
 
-  constructor(steps: Record<string, WorkflowNode>) {
+  constructor(steps: Record<string, WorkflowNode>, options: WorkflowOptions = {}) {
     this.steps = steps;
+    this.name = options.name ?? 'workflow';
+    this.logger = options.logger ?? new WorkflowStepLogger();
   }
 
   /**
@@ -25,17 +40,25 @@ export class Workflow {
    * @param initial dado inicial que será passado para o primeiro step
    * @returns resultado final após todos os steps
    */
-  async execute(): Promise<any> {
+  async execute(options: ExecuteOptions = {}): Promise<any> {
     const stepKeys = Object.keys(this.steps) as (keyof typeof this.steps)[];
     let lastStepResult: StructuredData<any> = {};
-    let stepsCount = 1;
-    // console.log('stepKeys', stepKeys);
+    const activeLogger = options.logger ?? this.logger;
+    const runLabel = options.runLabel ?? new Date().toISOString().replace(/[:.]/g, '-');
 
-    for (const stepKey of stepKeys) {
+    this.globalState = {};
+    this.lastStepResult = {} as StructuredData<any>;
+
+    try {
+      activeLogger.startRun(this.name, runLabel);
+
+      for (let index = 0; index < stepKeys.length; index++) {
+        const stepNumber = index + 1;
+        const stepKey = stepKeys[index];
       const stepNode: WorkflowNode = this.steps[stepKey];
       workflowInfo(
         'Step ' +
-          stepsCount++ +
+          stepNumber +
           ' - ' +
           (stepNode.name ? stepNode.name : stepKey),
       );
@@ -80,6 +103,30 @@ export class Workflow {
       this.globalState[stepKey] = { input: stepInput, output: stepResult };
       lastStepResult = stepResult;
 
+        const rawOutput = structuredDataToRawData(stepResult);
+        const globalStateSnapshot = Object.fromEntries(
+          Object.entries(this.globalState).map(([key, value]) => {
+            return [key, {
+              input: value.input,
+              output: structuredDataToRawData(value.output),
+            }];
+          }),
+        );
+
+        try {
+          activeLogger.logStep({
+            stepIndex: stepNumber,
+            stepKey: String(stepKey),
+            stepName: stepNode.name,
+            input: stepInput,
+            structuredOutput: stepResult,
+            rawOutput,
+            globalStateSnapshot,
+          });
+        } catch (error) {
+          console.warn('Failed to log workflow step', error);
+        }
+
       // Valida output antes de passar ao próximo
       // data = step.outputSchema.parse(result);
 
@@ -93,8 +140,11 @@ export class Workflow {
 
       // console.log('END');
       // process.exit();
+      }
+      return this.globalState;
+    } finally {
+      activeLogger.endRun();
     }
-    return this.globalState;
   }
 
   /**
