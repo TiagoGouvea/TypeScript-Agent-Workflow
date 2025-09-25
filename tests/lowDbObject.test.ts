@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { LowDb } from '../src/utils/lowDb';
+import { LowDbObject } from '../src/utils/lowDb';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -10,8 +10,8 @@ interface TestData {
   lastUpdate: string;
 }
 
-describe('LowDb Wrapper', () => {
-  let db: LowDb<TestData>;
+describe('LowDbObject', () => {
+  let db: LowDbObject<TestData>;
   const testDbName = 'test-lowdb';
   const databasePath = path.join(
     process.cwd(),
@@ -24,8 +24,8 @@ describe('LowDb Wrapper', () => {
       await fs.unlink(databasePath);
     } catch {}
 
-    db = new LowDb<TestData>(testDbName);
-    await db.init();
+    db = new LowDbObject<TestData>(testDbName);
+    // init() is now called automatically in constructor
   });
 
   afterEach(async () => {
@@ -39,7 +39,7 @@ describe('LowDb Wrapper', () => {
     expect(dbInfo.name).toBe(testDbName);
     expect(dbInfo.path).toContain(`${testDbName}.json`);
 
-    await db.set('lastUpdate', 'test');
+    await db.setField('lastUpdate', 'test');
 
     const exists = await db.exists();
     expect(exists).toBe(true);
@@ -59,7 +59,7 @@ describe('LowDb Wrapper', () => {
     await db.setData(testData);
 
     await db.reload();
-    const retrievedData = db.data;
+    const retrievedData = await db.getData();
 
     expect(retrievedData.users).toHaveLength(2);
     expect(retrievedData.users[0].name).toBe('John Doe');
@@ -67,14 +67,14 @@ describe('LowDb Wrapper', () => {
   });
 
   it('should set and get individual fields', async () => {
-    await db.set('lastUpdate', '2025-01-01T00:00:00Z');
+    await db.setField('lastUpdate', '2025-01-01T00:00:00Z');
 
-    const lastUpdate = db.get('lastUpdate');
+    const lastUpdate = await db.getField('lastUpdate');
     expect(lastUpdate).toBe('2025-01-01T00:00:00Z');
   });
 
   it('should append to array fields', async () => {
-    await db.set('users', []);
+    await db.setField('users', []);
 
     await db.push('users', {
       id: 1,
@@ -83,7 +83,7 @@ describe('LowDb Wrapper', () => {
     });
     await db.push('users', { id: 2, name: 'Bob', email: 'bob@example.com' });
 
-    const users = db.get('users');
+    const users = await db.getField('users');
     expect(users).toHaveLength(2);
     expect(users[0].name).toBe('Alice');
     expect(users[1].name).toBe('Bob');
@@ -102,7 +102,7 @@ describe('LowDb Wrapper', () => {
       lastUpdate: '2025-01-02',
     });
 
-    const data = db.data;
+    const data = await db.getData();
     expect(data.settings.theme).toBe('dark');
     expect(data.settings.notifications).toBe(true);
     expect(data.lastUpdate).toBe('2025-01-02');
@@ -121,48 +121,45 @@ describe('LowDb Wrapper', () => {
 
     await db.setJsonField('metadata', complexObject);
 
-    const storedAsString = db.get('metadata');
+    const storedAsString = await db.getField('metadata');
     expect(typeof storedAsString).toBe('string');
 
-    const retrievedObject = db.getJsonField('metadata');
+    const retrievedObject = await db.getJsonField('metadata');
     expect(retrievedObject).toEqual(complexObject);
     expect(retrievedObject.nested.array).toEqual([1, 2, 3]);
     expect(retrievedObject.nested.object.key).toBe('value');
   });
 
   it('should handle invalid JSON gracefully', async () => {
-    await db.set('metadata', 'this is not json');
+    await db.setField('metadata', 'this is not json');
 
-    const result = db.getJsonField('metadata');
+    const result = await db.getJsonField('metadata');
     expect(result).toBe('this is not json');
   });
 
   it('should work with multiple database instances', async () => {
-    const db1 = new LowDb<{ counter: number }>('database1');
-    const db2 = new LowDb<{ counter: number }>('database2');
+    const db1 = new LowDbObject<{ counter: number }>('database1');
+    const db2 = new LowDbObject<{ counter: number }>('database2');
 
-    await db1.init();
-    await db2.init();
+    // init() is now automatic
 
-    await db1.set('counter', 10);
-    await db2.set('counter', 20);
+    await db1.setField('counter', 10);
+    await db2.setField('counter', 20);
 
-    expect(db1.get('counter')).toBe(10);
-    expect(db2.get('counter')).toBe(20);
+    expect(await db1.getField('counter')).toBe(10);
+    expect(await db2.getField('counter')).toBe(20);
 
     await db1.delete();
     await db2.delete();
   });
 
   it('should persist data between sessions', async () => {
-    const db1 = new LowDb<{ message: string }>('persistence-test');
-    await db1.init();
-    await db1.set('message', 'Hello from first session');
+    const db1 = new LowDbObject<{ message: string }>('persistence-test');
+    await db1.setField('message', 'Hello from first session');
 
-    const db2 = new LowDb<{ message: string }>('persistence-test');
-    await db2.init();
+    const db2 = new LowDbObject<{ message: string }>('persistence-test');
 
-    expect(db2.get('message')).toBe('Hello from first session');
+    expect(await db2.getField('message')).toBe('Hello from first session');
 
     await db2.delete();
   });
@@ -178,8 +175,8 @@ describe('LowDb Wrapper', () => {
       lastLogin: string;
     }
 
-    const userDb = new LowDb<UserProfile>('user-profile');
-    await userDb.init();
+    const userDb = new LowDbObject<UserProfile>('user-profile');
+    // init() is now automatic
 
     await userDb.update({
       id: 'user123',
@@ -207,14 +204,14 @@ describe('LowDb Wrapper', () => {
     await userDb.push('history', 'action-001');
     await userDb.push('history', 'action-002');
 
-    const profile = userDb.get('profile');
+    const profile = await userDb.getField('profile');
     expect(profile.name).toBe('John Doe');
 
     const savedPrefs = JSON.parse(profile.preferences);
     expect(savedPrefs.ui.theme).toBe('dark');
     expect(savedPrefs.features).toContain('feature1');
 
-    const history = userDb.get('history');
+    const history = await userDb.getField('history');
     expect(history).toHaveLength(2);
     expect(history).toContain('action-001');
 
