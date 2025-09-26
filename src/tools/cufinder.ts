@@ -2,8 +2,7 @@ import axios from 'axios';
 import chalk from 'chalk';
 import { z } from 'zod';
 import { tool } from '../types/workflow/Tool.ts';
-import * as fs from 'fs';
-import * as path from 'path';
+import { BaseCache } from '../services/BaseCache.ts';
 import * as crypto from 'crypto';
 
 // Types for better type safety
@@ -70,31 +69,30 @@ interface CacheConfig {
   enabled: boolean;
 }
 
-interface CacheEntry<T> {
-  timestamp: number;
+interface CufinderCacheParams {
   endpoint: string;
   params: Record<string, any>;
-  data: T;
-  ttl: number;
 }
 
-// Cache management class
-class CufinderCache {
-  private static readonly CACHE_DIR = path.join(process.cwd(), 'temp', 'cufinder');
-
-  // TTL configurations for different endpoints
+// Cache management class with endpoint-specific configurations
+class CufinderCache extends BaseCache<CufinderCacheParams, any> {
+  // TTL configurations for different endpoints (in milliseconds)
   private static readonly ENDPOINT_CONFIG: Record<string, CacheConfig> = {
-    '/dtc': { ttl: 30 * 24 * 60 * 60, enabled: true }, // 30 days for domain to company
-    '/cuf': { ttl: 30 * 24 * 60 * 60, enabled: true }, // 30 days for company to domain
-    '/rel': { ttl: 7 * 24 * 60 * 60, enabled: true },  // 7 days for email lookup
-    '/epp': { ttl: 24 * 60 * 60, enabled: true },      // 1 day for LinkedIn profiles
-    '/lcuf': { ttl: 30 * 24 * 60 * 60, enabled: true }, // 30 days for company LinkedIn
-    '/dte': { ttl: 7 * 24 * 60 * 60, enabled: true },  // 7 days for domain to email
-    '/ntp': { ttl: 30 * 24 * 60 * 60, enabled: true }, // 30 days for company phone
+    '/dtc': { ttl: 30 * 24 * 60 * 60 * 1000, enabled: true }, // 30 days for domain to company
+    '/cuf': { ttl: 30 * 24 * 60 * 60 * 1000, enabled: true }, // 30 days for company to domain
+    '/rel': { ttl: 7 * 24 * 60 * 60 * 1000, enabled: true },  // 7 days for email lookup
+    '/epp': { ttl: 24 * 60 * 60 * 1000, enabled: true },      // 1 day for LinkedIn profiles
+    '/lcuf': { ttl: 30 * 24 * 60 * 60 * 1000, enabled: true }, // 30 days for company LinkedIn
+    '/dte': { ttl: 7 * 24 * 60 * 60 * 1000, enabled: true },  // 7 days for domain to email
+    '/ntp': { ttl: 30 * 24 * 60 * 60 * 1000, enabled: true }, // 30 days for company phone
   };
 
-  private static generateCacheKey(endpoint: string, params: Record<string, any>): string {
-    // Create a stable string representation of the request
+  constructor() {
+    super('Cufinder', './temp/cufinder', 24 * 60 * 60 * 1000);
+  }
+
+  protected generateCacheKey(cacheParams: CufinderCacheParams): string {
+    const { endpoint, params } = cacheParams;
     const sortedParams = Object.keys(params)
       .sort()
       .reduce((result, key) => {
@@ -106,116 +104,32 @@ class CufinderCache {
     return crypto.createHash('md5').update(keyString).digest('hex');
   }
 
-  private static getCacheFilePath(endpoint: string, params: Record<string, any>): string {
-    const cacheKey = this.generateCacheKey(endpoint, params);
-    const endpointDir = endpoint.replace(/[^a-zA-Z0-9]/g, '_');
-    return path.join(this.CACHE_DIR, endpointDir, `${cacheKey}.json`);
-  }
-
-  private static ensureCacheDir(filePath: string): void {
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
-
-  static async get<T>(endpoint: string, params: Record<string, any>): Promise<T | null> {
-    try {
-      const config = this.ENDPOINT_CONFIG[endpoint];
-      if (!config || !config.enabled) {
-        return null;
-      }
-
-      const filePath = this.getCacheFilePath(endpoint, params);
-
-      if (!fs.existsSync(filePath)) {
-        return null;
-      }
-
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const cacheEntry: CacheEntry<T> = JSON.parse(fileContent);
-
-      // Check if cache has expired
-      const now = Date.now();
-      const age = (now - cacheEntry.timestamp) / 1000; // age in seconds
-
-      if (age > cacheEntry.ttl) {
-        // Cache expired, remove file
-        fs.unlinkSync(filePath);
-        return null;
-      }
-
-      return cacheEntry.data;
-    } catch (error) {
-      console.warn('Cache read error:', error);
+  // Override get method to check endpoint configuration
+  get(cacheParams: CufinderCacheParams): any | null {
+    const config = CufinderCache.ENDPOINT_CONFIG[cacheParams.endpoint];
+    if (!config || !config.enabled) {
       return null;
     }
+    return super.get(cacheParams);
   }
 
-  static async set<T>(endpoint: string, params: Record<string, any>, data: T): Promise<void> {
-    try {
-      const config = this.ENDPOINT_CONFIG[endpoint];
-      if (!config || !config.enabled) {
-        return;
-      }
-
-      const filePath = this.getCacheFilePath(endpoint, params);
-      this.ensureCacheDir(filePath);
-
-      const cacheEntry: CacheEntry<T> = {
-        timestamp: Date.now(),
-        endpoint,
-        params,
-        data,
-        ttl: config.ttl,
-      };
-
-      fs.writeFileSync(filePath, JSON.stringify(cacheEntry, null, 2), 'utf-8');
-    } catch (error) {
-      console.warn('Cache write error:', error);
+  // Override set method to use endpoint-specific TTL
+  set(cacheParams: CufinderCacheParams, data: any, ttl?: number): void {
+    const config = CufinderCache.ENDPOINT_CONFIG[cacheParams.endpoint];
+    if (!config || !config.enabled) {
+      return;
     }
+    const endpointTtl = ttl || config.ttl;
+    super.set(cacheParams, data, endpointTtl);
   }
 
-  static async cleanup(): Promise<void> {
-    try {
-      if (!fs.existsSync(this.CACHE_DIR)) {
-        return;
-      }
+  // Convenience methods to maintain API compatibility
+  async getByEndpoint<T>(endpoint: string, params: Record<string, any>): Promise<T | null> {
+    return this.get({ endpoint, params });
+  }
 
-      const cleanupDir = (dir: string) => {
-        const entries = fs.readdirSync(dir);
-
-        for (const entry of entries) {
-          const fullPath = path.join(dir, entry);
-          const stat = fs.statSync(fullPath);
-
-          if (stat.isDirectory()) {
-            cleanupDir(fullPath);
-            // Remove empty directories
-            if (fs.readdirSync(fullPath).length === 0) {
-              fs.rmdirSync(fullPath);
-            }
-          } else if (entry.endsWith('.json')) {
-            try {
-              const content = fs.readFileSync(fullPath, 'utf-8');
-              const cacheEntry = JSON.parse(content);
-              const age = (Date.now() - cacheEntry.timestamp) / 1000;
-
-              if (age > cacheEntry.ttl) {
-                fs.unlinkSync(fullPath);
-              }
-            } catch {
-              // Invalid cache file, remove it
-              fs.unlinkSync(fullPath);
-            }
-          }
-        }
-      };
-
-      cleanupDir(this.CACHE_DIR);
-    } catch (error) {
-      console.warn('Cache cleanup error:', error);
-    }
+  async setByEndpoint<T>(endpoint: string, params: Record<string, any>, data: T): Promise<void> {
+    this.set({ endpoint, params }, data);
   }
 }
 
@@ -223,12 +137,13 @@ class CufinderCache {
 export class CufinderService {
   private static readonly BASE_URL = 'https://api.cufinder.io/v2';
   private static readonly API_KEY = process.env.CUFINDER_API_KEY;
+  private static cache = new CufinderCache();
 
   // Initialize cache cleanup on first use
   private static initialized = false;
   private static async initialize() {
     if (!this.initialized) {
-      await CufinderCache.cleanup();
+      this.cache.cleanup();
       this.initialized = true;
     }
   }
@@ -247,7 +162,7 @@ export class CufinderService {
 
     try {
       // 1. Try to get from cache first
-      const cachedData = await CufinderCache.get<any>(endpoint, params);
+      const cachedData = await this.cache.getByEndpoint<any>(endpoint, params);
       if (cachedData) {
         console.log(chalk.yellow('📁 Cache hit for'), chalk.cyan(endpoint), chalk.gray(JSON.stringify(params)));
         return {
@@ -287,7 +202,7 @@ export class CufinderService {
         console.log('-----------------');
 
         // 4. Save to cache if successful
-        await CufinderCache.set(endpoint, params, responseData);
+        await this.cache.setByEndpoint(endpoint, params, responseData);
         console.log(chalk.green('💾 Cached response for'), chalk.cyan(endpoint));
 
         return {

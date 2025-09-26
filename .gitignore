@@ -8,6 +8,8 @@
 .claude/
 CLAUDE.md
 
+cache/
+
 # Logs
 /logs/
 yarn-error.log

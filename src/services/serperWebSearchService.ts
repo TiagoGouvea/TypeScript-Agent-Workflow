@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import { BaseCache } from './BaseCache.ts';
 
 export type SerperSearchType =
   | 'shopping'
@@ -53,9 +54,28 @@ const intervalMapping: Record<SerperSearchInterval, string> = {
   allTime: '',
 };
 
+export class SerperCache extends BaseCache<SerperSearchParams, SerperSearchSuccess> {
+  constructor() {
+    super('Serper', './cache/serper', 72 * 60 * 60 * 1000); // 72 hours TTL
+  }
+
+  protected generateCacheKey(params: SerperSearchParams): string {
+    const sortedParams = Object.keys(params)
+      .sort()
+      .reduce((result, key) => {
+        result[key] = (params as any)[key];
+        return result;
+      }, {} as Record<string, any>);
+
+    const paramString = JSON.stringify(sortedParams);
+    return Buffer.from(paramString).toString('base64url');
+  }
+}
+
 export class SerperWebSearchService {
   private static readonly baseUrl = 'https://google.serper.dev';
   private static readonly apiKey = process.env.SERPER_API_KEY;
+  private static cache = new SerperCache();
 
   static async search(params: SerperSearchParams): Promise<SerperSearchResponse> {
     if (!this.apiKey) {
@@ -70,6 +90,12 @@ export class SerperWebSearchService {
         success: false,
         error: 'Query parameter is required',
       };
+    }
+
+    // Check cache first
+    const cachedResult = this.cache.get(params);
+    if (cachedResult) {
+      return cachedResult;
     }
 
     const { type, query, interval, gl, hl, location } = params;
@@ -109,11 +135,16 @@ export class SerperWebSearchService {
         console.log('Serper returned empty results for query:', query);
       }
 
-      return {
+      const successResult: SerperSearchSuccess = {
         success: true,
         results,
         relatedSearches,
       };
+
+      // Cache successful results
+      this.cache.set(params, successResult);
+
+      return successResult;
     } catch (error: any) {
       const code = error?.status || error?.response?.status || error?.code;
       const message =
@@ -132,5 +163,9 @@ export class SerperWebSearchService {
         details: message,
       };
     }
+  }
+
+  static cleanupCache(): number {
+    return this.cache.cleanup();
   }
 }

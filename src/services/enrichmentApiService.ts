@@ -1,31 +1,19 @@
 import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
 import chalk from 'chalk';
+import { BaseCache } from './BaseCache.ts';
 
-interface CacheEntry {
-  data: any;
-  timestamp: number;
-  ttl: number;
+interface EnrichmentCacheParams {
+  endpoint: string;
+  params: Record<string, any>;
 }
 
-export class EnrichmentApiCache {
-  private cacheDir: string;
-  private defaultTtl: number;
-
-  constructor(cacheDir = './cache/enrichmentapi', defaultTtl = 24 * 60 * 60 * 1000) {
-    this.cacheDir = cacheDir;
-    this.defaultTtl = defaultTtl;
-    this.ensureCacheDir();
+export class EnrichmentApiCache extends BaseCache<EnrichmentCacheParams, any> {
+  constructor() {
+    super('EnrichmentAPI', './cache/enrichmentapi', 24 * 60 * 60 * 1000); // 24 hours TTL
   }
 
-  private ensureCacheDir(): void {
-    if (!fs.existsSync(this.cacheDir)) {
-      fs.mkdirSync(this.cacheDir, { recursive: true });
-    }
-  }
-
-  private getCacheKey(endpoint: string, params: Record<string, any>): string {
+  protected generateCacheKey(cacheParams: EnrichmentCacheParams): string {
+    const { endpoint, params } = cacheParams;
     const sortedParams = Object.keys(params)
       .sort()
       .reduce((result, key) => {
@@ -34,80 +22,16 @@ export class EnrichmentApiCache {
       }, {} as Record<string, any>);
 
     const paramString = JSON.stringify(sortedParams);
-    const hash = Buffer.from(`${endpoint}:${paramString}`).toString('base64url');
-    return hash;
+    return Buffer.from(`${endpoint}:${paramString}`).toString('base64url');
   }
 
-  private getCachePath(key: string): string {
-    return path.join(this.cacheDir, `${key}.json`);
+  // Convenience methods to maintain API compatibility
+  getByEndpoint(endpoint: string, params: Record<string, any>): any | null {
+    return this.get({ endpoint, params });
   }
 
-  get(endpoint: string, params: Record<string, any>): any | null {
-    const key = this.getCacheKey(endpoint, params);
-    const cachePath = this.getCachePath(key);
-
-    try {
-      if (!fs.existsSync(cachePath)) {
-        return null;
-      }
-
-      const cacheData = JSON.parse(fs.readFileSync(cachePath, 'utf8')) as CacheEntry;
-      const now = Date.now();
-
-      if (now - cacheData.timestamp > cacheData.ttl) {
-        fs.unlinkSync(cachePath);
-        return null;
-      }
-
-      console.log(chalk.blue('📁 Cache hit for EnrichmentAPI'));
-      return cacheData.data;
-    } catch (error) {
-      console.log(chalk.yellow('⚠️ Cache read error:', error));
-      return null;
-    }
-  }
-
-  set(endpoint: string, params: Record<string, any>, data: any, ttl?: number): void {
-    const key = this.getCacheKey(endpoint, params);
-    const cachePath = this.getCachePath(key);
-
-    const cacheEntry: CacheEntry = {
-      data,
-      timestamp: Date.now(),
-      ttl: ttl || this.defaultTtl
-    };
-
-    try {
-      fs.writeFileSync(cachePath, JSON.stringify(cacheEntry, null, 2));
-      console.log(chalk.green('💾 Cached EnrichmentAPI response'));
-    } catch (error) {
-      console.log(chalk.yellow('⚠️ Cache write error:', error));
-    }
-  }
-
-  cleanup(): number {
-    const now = Date.now();
-    let cleanedCount = 0;
-
-    try {
-      const files = fs.readdirSync(this.cacheDir);
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-
-        const filePath = path.join(this.cacheDir, file);
-        const cacheData = JSON.parse(fs.readFileSync(filePath, 'utf8')) as CacheEntry;
-
-        if (now - cacheData.timestamp > cacheData.ttl) {
-          fs.unlinkSync(filePath);
-          cleanedCount++;
-        }
-      }
-    } catch (error) {
-      console.log(chalk.yellow('⚠️ Cache cleanup error:', error));
-    }
-
-    return cleanedCount;
+  setByEndpoint(endpoint: string, params: Record<string, any>, data: any, ttl?: number): void {
+    this.set({ endpoint, params }, data, ttl);
   }
 }
 
@@ -130,7 +54,7 @@ export class EnrichmentApiService {
       };
     }
 
-    const cachedResult = this.cache.get(endpoint, params);
+    const cachedResult = this.cache.getByEndpoint(endpoint, params);
     if (cachedResult) {
       return {
         success: true,
@@ -147,7 +71,7 @@ export class EnrichmentApiService {
 
       console.log(chalk.green('✅ EnrichmentAPI request successful'));
 
-      this.cache.set(endpoint, params, response.data);
+      this.cache.setByEndpoint(endpoint, params, response.data);
 
       return {
         success: true,
