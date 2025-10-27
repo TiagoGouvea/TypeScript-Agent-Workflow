@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { openAIWebSearch } from '../../src/tools/openAIWebSearch';
 
-describe('openAIWebSearch', () => {
+const hasApiKey = !!process.env.OPENAI_API_KEY;
+
+describe.skipIf(!hasApiKey)('openAIWebSearch tool', () => {
   it('should search for news successfully', async () => {
     const params = {
       // type: 'news',
@@ -15,6 +17,7 @@ describe('openAIWebSearch', () => {
       gl: 'br' as const,
       location: 'Brasil',
       interval: 'allTime' as const,
+      prompt: 'Return links with reliable sources only',
     };
 
     const result = await openAIWebSearch.run(params);

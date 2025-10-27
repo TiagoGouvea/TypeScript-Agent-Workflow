@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "DEBUG_DEPTH=null node --no-warnings --experimental-transform-types --experimental-strip-types --env-file=.env src/index.ts $@",
+    "start": "cross-env DEBUG_DEPTH=null node --no-warnings --experimental-transform-types --experimental-strip-types --env-file=.env src/index.ts",
     "debugOptions": "DEBUG=taw:* ",
-    "test": "DEBUG_DEPTH=null DEBUG=taw:* vitest run",
-    "test:ui": "DEBUG_DEPTH=null DEBUG=taw:* vitest --ui --no-coverage --reporter=verbose",
-    "test:watch": "DEBUG_DEPTH=null DEBUG=taw:* vitest",
+    "test": "cross-env DEBUG_DEPTH=null DEBUG=taw:* vitest run",
+    "test:ui": "cross-env DEBUG_DEPTH=null DEBUG=taw:* vitest --ui --no-coverage --reporter=verbose",
+    "test:watch": "cross-env DEBUG_DEPTH=null DEBUG=taw:* vitest",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
@@ -34,6 +34,7 @@
     "@types/debug": "^4.1.12",
     "@types/node": "^22.14.1",
     "@vitest/ui": "3.1.1",
+    "cross-env": "^10.0.0",
     "eslint": "^9.24.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
@@ -48,6 +49,7 @@
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.0",
     "jsonrepair": "^3.12.0",
+    "lowdb": "^7.0.1",
     "openai": "^4.95.1",
     "youtube-transcript-plus": "^1.0.4",
     "zod": "^3.24.3"

@@ -1,5 +1,3 @@
-import OpenAI from 'openai';
-import chalk from 'chalk';
 import { z } from 'zod';
 import { tool } from '../types/workflow/Tool.ts';
 import readline from 'node:readline/promises';

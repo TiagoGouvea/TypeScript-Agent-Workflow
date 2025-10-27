@@ -1,9 +1,14 @@
 .env*
 /node_modules/
 
+# Database files
+/database/
+
 # Claude code
 .claude/
 CLAUDE.md
+
+cache/
 
 # Logs
 /logs/
@@ -12,7 +17,6 @@ yarn-error.log
 # Temp
 /results/
 /temp/
-backlog.md
 tsconfig.tsbuildinfo 
 
 # IDE and Computer files
@@ -21,3 +25,7 @@ DS_Store
 
 # Other tools
 **/.claude/**
+
+# Other
+_backlog.md
+_workflows.md

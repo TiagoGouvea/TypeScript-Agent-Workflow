@@ -1,7 +1,6 @@
-import axios from 'axios';
-import chalk from 'chalk';
 import { z } from 'zod';
 import { tool } from '../types/workflow/Tool.ts';
+import { SlackService } from '../services/slackService.ts';
 
 export const slackMessage = tool({
   name: 'slackMessage',
@@ -28,59 +27,12 @@ export const slackMessage = tool({
   run: async (params) => {
     const { webhookUrl, text, username, channel, iconEmoji } = params;
 
-    console.log(
-      chalk.bgBlue(' SLACK MESSAGE '),
-      chalk.blue(
-        `Sending message to Slack ${username ? `to ${username}` : ''} ${channel ? `on channel: ${channel}` : ''}...`,
-      ),
-    );
-
-    const payload: any = {
+    return SlackService.sendMessage({
+      webhookUrl,
       text,
-    };
-
-    if (username === 'none') payload.username = null;
-    if (channel === 'none') payload.channel = null;
-    if (iconEmoji === 'none') payload.icon_emoji = null;
-
-    if (username) payload.username = username;
-    if (channel) payload.channel = channel;
-    if (iconEmoji) payload.icon_emoji = iconEmoji;
-
-    try {
-      // console.log('webhookUrl', webhookUrl);
-      // console.log('payload', payload);
-      const response = await axios.post(webhookUrl, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // console.log('response', response);
-
-      if (response.status === 200 && response.data === 'ok') {
-        console.log(chalk.green('✓ Message sent successfully to Slack'));
-        return {
-          success: true,
-          message: 'Message sent successfully',
-          timestamp: new Date().toISOString(),
-        };
-      } else {
-        console.error('Unexpected response from Slack:', response.data);
-        return {
-          success: false,
-          error: 'Unexpected response from Slack',
-          response: response.data,
-        };
-      }
-    } catch (error: any) {
-      const errorMessage = error.response?.data || error.message;
-      console.error(chalk.red('Error sending message to Slack:'), errorMessage);
-      return {
-        success: false,
-        error: 'Failed to send message to Slack',
-        details: errorMessage,
-      };
-    }
+      username,
+      channel,
+      iconEmoji,
+    });
   },
 });

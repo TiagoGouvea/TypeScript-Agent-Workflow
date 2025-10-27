@@ -70,10 +70,25 @@ export function rawDataObjectToStructuredData(rawDataObject: RawData) {
   // logStep('inputDataObjectToInputData rawDataObject', rawDataObject);
   const stepInputData: StructuredData<any> = {};
 
+  // Tratamento para null, undefined, ou valores falsy
+  if (rawDataObject == null || rawDataObject === undefined) {
+    console.warn('rawDataObjectToStructuredData received null/undefined, returning empty structured data');
+    return stepInputData;
+  }
+
   // Tratamento especial para strings - se for apenas uma string, tratá-la como um valor único
   if (typeof rawDataObject === 'string') {
     stepInputData['content'] = {
       value: rawDataObject,
+    };
+    return stepInputData;
+  }
+
+  // Verificação adicional para garantir que é um objeto
+  if (typeof rawDataObject !== 'object') {
+    console.warn(`rawDataObjectToStructuredData received non-object type: ${typeof rawDataObject}, converting to string`);
+    stepInputData['content'] = {
+      value: String(rawDataObject),
     };
     return stepInputData;
   }
