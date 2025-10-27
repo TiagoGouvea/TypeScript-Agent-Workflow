@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { z } from 'zod';
 import { tool } from '../types/workflow/Tool.ts';
 import readline from 'node:readline/promises';
+import { zodToJsonSchema } from 'openai/_vendor/zod-to-json-schema/zodToJsonSchema.mjs';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -26,8 +27,23 @@ export const openAIWebSearch = tool({
         'allTime',
       ])
       .describe('Time interval for the search.'),
+    prompt: z
+      .string()
+      .optional()
+      .describe('Optional extra instructions to append to the search prompt'),
+    outputSchema: z.any().optional().describe('Response format'),
   }),
-  run: async ({ type, query, gl, location, interval }) => {
+  run: async ({
+    type,
+    query,
+    gl,
+    location,
+    interval,
+    prompt,
+    outputSchema,
+  }) => {
+    // console.log(response);
+
     console.log(
       chalk.bgCyan(' WEB SEARCH '),
       chalk.cyan(`Searching via OpenAI for: ${query} (${type})`),
@@ -43,7 +59,9 @@ export const openAIWebSearch = tool({
       allTime: '',
     };
     const timeContext = intervalSuffixes[interval];
-    const fullPrompt = `${query}${timeContext ? ` ${timeContext}` : ''} - at least 10 results`;
+    const fullPrompt =
+      prompt +
+      `${query}${timeContext ? ` ${timeContext}` : ''} - at least 10 results`;
 
     console.log('fullPrompt', fullPrompt);
 
@@ -106,7 +124,7 @@ export const openAIWebSearch = tool({
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-search-preview',
-      temperature: 0.3,
+      // temperature: 0.3,
       web_search_options: {
         // search_context_size: 'high',
       },
@@ -114,26 +132,28 @@ export const openAIWebSearch = tool({
         type: 'json_schema',
         json_schema: {
           name: 'web_search_preview',
-          schema: {
-            type: 'object', // root must be object
-            properties: {
-              results: {
-                // array wrapped here
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    title: { type: 'string' },
-                    url: { type: 'string' },
-                    description: { type: 'string' },
+          schema: outputSchema
+            ? zodToJsonSchema(outputSchema)
+            : {
+                type: 'object', // root must be object
+                properties: {
+                  results: {
+                    // array wrapped here
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        title: { type: 'string' },
+                        url: { type: 'string' },
+                        description: { type: 'string' },
+                      },
+                      required: ['title', 'url'],
+                    },
                   },
-                  required: ['title', 'url'],
                 },
+                required: ['results'],
+                additionalProperties: false,
               },
-            },
-            required: ['results'],
-            additionalProperties: false,
-          },
         },
       },
       messages: [
