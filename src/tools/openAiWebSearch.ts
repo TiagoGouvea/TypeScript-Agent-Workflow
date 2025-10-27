@@ -31,15 +31,7 @@ export const openAIWebSearch = tool({
       .describe('Optional extra instructions to append to the search prompt'),
     outputSchema: z.any().optional().describe('Response format'),
   }),
-  run: async ({
-    type,
-    query,
-    gl,
-    location,
-    interval,
-    prompt,
-    outputSchema,
-  }) => {
+  run: async ({ type, query, gl, location, interval, prompt }) => {
     // console.log(response);
 
     console.log(
@@ -130,28 +122,26 @@ export const openAIWebSearch = tool({
         type: 'json_schema',
         json_schema: {
           name: 'web_search_preview',
-          schema: outputSchema
-            ? zodToJsonSchema(outputSchema)
-            : {
-                type: 'object', // root must be object
-                properties: {
-                  results: {
-                    // array wrapped here
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        title: { type: 'string' },
-                        url: { type: 'string' },
-                        description: { type: 'string' },
-                      },
-                      required: ['title', 'url'],
-                    },
+          schema: {
+            type: 'object', // root must be object
+            properties: {
+              results: {
+                // array wrapped here
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    url: { type: 'string' },
+                    description: { type: 'string' },
                   },
+                  required: ['title', 'url'],
                 },
-                required: ['results'],
-                additionalProperties: false,
               },
+            },
+            required: ['results'],
+            additionalProperties: false,
+          },
         },
       },
       messages: [

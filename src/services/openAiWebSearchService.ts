@@ -18,7 +18,6 @@ export interface OpenAIWebSearchParams {
   location: string;
   interval: OpenAIWebSearchInterval;
   prompt?: string;
-  outputSchema?: ZodType;
 }
 
 export interface OpenAIWebSearchResult {
@@ -65,8 +64,7 @@ export class OpenAIWebSearchService {
       };
     }
 
-    const { type, query, gl, location, interval, prompt, outputSchema } =
-      params;
+    const { type, query, gl, location, interval, prompt } = params;
 
     console.log(
       chalk.bgCyan(' OPENAI WEB SEARCH '),
@@ -85,33 +83,31 @@ export class OpenAIWebSearchService {
         web_search_options: {
           // search_context_size: 'high',
         },
-        response_format: outputSchema
-          ? zodResponseFormat(outputSchema, 'json_schema')
-          : {
-              type: 'json_schema',
-              json_schema: {
-                name: 'web_search_preview',
-                schema: {
-                  type: 'object',
-                  properties: {
-                    results: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          title: { type: 'string' },
-                          url: { type: 'string' },
-                          description: { type: 'string' },
-                        },
-                        required: ['title', 'url'],
-                      },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'web_search_preview',
+            schema: {
+              type: 'object',
+              properties: {
+                results: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      url: { type: 'string' },
+                      description: { type: 'string' },
                     },
+                    required: ['title', 'url'],
                   },
-                  required: ['results'],
-                  additionalProperties: false,
                 },
               },
+              required: ['results'],
+              additionalProperties: false,
             },
+          },
+        },
         messages: [
           {
             role: 'user',
