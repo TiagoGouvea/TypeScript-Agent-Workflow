@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import chalk from 'chalk';
+import { ZodType } from 'zod';
+import { zodResponseFormat } from 'openai/helpers/zod.mjs';
 
 export type OpenAIWebSearchInterval =
   | 'lastHour'
@@ -45,7 +47,9 @@ export class OpenAIWebSearchService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  static async search(params: OpenAIWebSearchParams): Promise<OpenAIWebSearchResponse> {
+  static async search(
+    params: OpenAIWebSearchParams,
+  ): Promise<OpenAIWebSearchResponse> {
     if (!process.env.OPENAI_API_KEY) {
       return {
         success: false,
@@ -64,7 +68,9 @@ export class OpenAIWebSearchService {
 
     console.log(
       chalk.bgCyan(' OPENAI WEB SEARCH '),
-      chalk.cyan(`Searching via OpenAI for: ${query} (${type}) [${location}/${gl}]`),
+      chalk.cyan(
+        `Searching via OpenAI for: ${query} (${type}) [${location}/${gl}]`,
+      ),
     );
 
     const timeContext = intervalSuffixes[interval];
@@ -110,12 +116,15 @@ export class OpenAIWebSearchService {
         ],
       });
 
-      const results = JSON.parse(completion.choices[0].message.content);
-      // console.dir(results.results, { depth: null });
+      const results = JSON.parse(completion.choices[0].message.content!);
+      // console.log('results');
+      // console.dir(results, { depth: null });
+      // console.log('completion');
+      // console.dir(completion, { depth: null });
 
       return {
         success: true,
-        results: results.results,
+        results,
       };
     } catch (error: any) {
       console.error('Error during OpenAI web search:', error.message || error);
