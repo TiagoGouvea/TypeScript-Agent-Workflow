@@ -1,7 +1,8 @@
+import chalk from 'chalk';
+import OpenAI from 'openai';
 import { z } from 'zod';
+
 import { tool } from '../types/workflow/Tool.ts';
-import readline from 'node:readline/promises';
-import { zodToJsonSchema } from 'openai/_vendor/zod-to-json-schema/zodToJsonSchema.mjs';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
